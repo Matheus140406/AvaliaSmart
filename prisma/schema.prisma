@@ -1,0 +1,982 @@
+// =====================================================================================
+// AVALIASMART — Schema Prisma
+// SaaS multi-tenant de lançamento e gestão de notas escolares
+// Suporta tanto "Escola" (múltiplos usuários) quanto "Professor Autônomo"
+// (o próprio professor é seu próprio Tenant) sob o mesmo modelo de dados.
+// =====================================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// -------------------------------------------------------------------------------------
+// ENUMS
+// -------------------------------------------------------------------------------------
+
+enum TenantType {
+  ESCOLA
+  PROFESSOR_AUTONOMO
+}
+
+enum MembershipRole {
+  ADMIN
+  COORDENADOR
+  PROFESSOR
+  ALUNO
+  RESPONSAVEL
+}
+
+enum EnrollmentStatus {
+  ATIVA
+  TRANCADA
+  TRANSFERIDA
+  CONCLUIDA
+  CANCELADA
+}
+
+
+enum NotificationChannel {
+  WHATSAPP
+  SMS
+  EMAIL
+}
+
+enum NotificationTrigger {
+  NOTA_ABAIXO_MEDIA
+  FALTA_EXCESSIVA
+  BOLETIM_DISPONIVEL
+  RISCO_REPROVACAO
+  MANUAL
+}
+
+enum NotificationStatus {
+  PENDENTE
+  ENVIADA
+  FALHOU
+}
+
+// -------------------------------------------------------------------------------------
+// TENANT & IDENTIDADE
+// -------------------------------------------------------------------------------------
+//
+// Modelo de login único + seletor de workspace (estilo Notion/Slack): a pessoa
+// se autentica UMA vez (User) e pode pertencer a vários Tenants ao mesmo tempo,
+// cada um com seu próprio papel — é a Membership que carrega isso, não o User.
+//
+//   User (login global) ──< Membership >── Tenant (workspace)
+//                              │
+//                              └─ role: ADMIN | COORDENADOR | PROFESSOR | ALUNO | RESPONSAVEL
+//
+// "Professor autônomo" não é um caso especial: é só um Tenant com uma única
+// Membership (role PROFESSOR/ADMIN) apontando pra ele.
+//
+// Toda referência de negócio que hoje seria "qual usuário fez isso" (professor
+// de uma disciplina, quem lançou a nota, etc.) aponta para Membership, não para
+// User — porque a mesma pessoa pode ser PROFESSOR na Escola A e RESPONSAVEL na
+// Escola B, e essas identidades-por-tenant não podem se misturar.
+
+model Tenant {
+  id        String     @id @default(cuid())
+  name      String
+  slug      String     @unique
+  type      TenantType @default(ESCOLA)
+  logoUrl   String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Opcional de propósito: um Tenant existente não é migrado à força pra
+  // dentro de uma Organization — só passa a ter grupo quando o dono da
+  // Organization vincula explicitamente (ver organization.service.ts).
+  // Agrupamento puramente visual/organizacional: NÃO dá ao dono da
+  // Organization acesso implícito aos dados deste Tenant — isso continua
+  // exigindo uma Membership própria aqui, igual antes.
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  subscription    Subscription?
+  memberships     Membership[]
+  academicYears   AcademicYear[]
+  classes         Class[]
+  subjects        Subject[]
+  students        Student[]
+  guardians       Guardian[]
+  notificationTpl NotificationTemplate[]
+  importHistory   ImportHistory[]
+  auditLogs       AuditLog[]
+  invites         Invite[]
+  aiUsageLogs     AiUsageLog[]
+  paymentReceipts PaymentReceipt[]
+  exportShareLinks ExportShareLink[]
+  evaluationTypes  EvaluationTypeOption[]
+
+  @@index([slug])
+}
+
+/// Rede/grupo de escolas — agrupa vários Tenants sob uma mesma conta (ex:
+/// uma mantenedora com 3 unidades). Puramente organizacional: só o `owner`
+/// pode vincular/desvincular Tenants (ver organization.service.ts); isso
+/// NÃO concede ao owner acesso aos dados de nenhum Tenant vinculado — quem
+/// decide isso continua sendo a Membership de cada Tenant, isolada como
+/// sempre foi. Sem relatório agregado cross-escola nesta versão (fase 2).
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner   User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tenants Tenant[]
+
+  @@index([ownerId])
+}
+
+/// Identidade de login, única e global — o que o Auth.js autentica.
+/// Segue o shape esperado pelo Prisma Adapter do NextAuth (User/Account/Session/VerificationToken).
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String? // usado pelo Credentials provider; nulo se o login for só via Google
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts    Account[] // vínculos OAuth (Google, Facebook etc.)
+  sessions    Session[] // só é populada se a estratégia for "database"; com JWT fica vazia
+  memberships Membership[] // um workspace (Tenant) por linha
+  passwordResetTokens PasswordResetToken[]
+  organizationsOwned  Organization[] // redes/grupos de escolas que este User administra
+}
+
+/// Padrão NextAuth: liga o User a um provedor OAuth (Google).
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+/// Padrão NextAuth. Com estratégia JWT (a definida no briefing) essa tabela
+/// fica essencialmente sem uso — mantida por compatibilidade com o Adapter e
+/// caso se decida migrar pra sessão em banco no futuro.
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Padrão NextAuth: magic link / verificação de e-mail.
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+/// Reset de senha (fluxo próprio — NextAuth não cobre isso pra Credentials).
+/// Guarda o HASH do token, não o token em si — se o banco vazar, os tokens
+/// não são diretamente utilizáveis. Cada novo pedido invalida os anteriores
+/// do mesmo usuário (evita token antigo "esquecido" ainda válido rodando por
+/// aí), e o token é de uso único (usedAt marcado no consumo).
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// A "identidade dentro do workspace": liga User <-> Tenant com um papel.
+/// É esta linha (não o User) que o resto do sistema referencia — o `Membership.id`
+/// é o que vira `session.user.id` (escopado ao tenant ativo) depois que a pessoa
+/// escolhe o workspace no seletor pós-login.
+model Membership {
+  id        String         @id @default(cuid())
+  userId    String
+  tenantId  String
+  role      MembershipRole
+  active    Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Um PROFESSOR pode lecionar em várias turmas/disciplinas dentro do tenant
+  classSubjectsTaught ClassSubject[]
+  gradesUpdated       Grade[]
+
+  // Preenchido quando essa Membership é o login de um aluno ou responsável
+  studentProfile  Student?
+  guardianProfile Guardian?
+
+  importsPerformed ImportHistory[]
+  auditLogs        AuditLog[]
+  invitesSent      Invite[]
+  aiUsageLogs      AiUsageLog[]
+
+  @@unique([userId, tenantId])
+  @@index([tenantId, role])
+}
+
+enum InviteStatus {
+  PENDENTE
+  ACEITO
+  EXPIRADO
+  REVOGADO
+}
+
+/// Convite de um ADMIN pra alguém entrar no tenant como COORDENADOR ou
+/// PROFESSOR (nunca ADMIN — evita escalação de privilégio via um link de
+/// e-mail comprometido). O teto de usuários do plano (`Plan.maxUsers`) conta
+/// Memberships ativas + convites PENDENTE, não só aceitos — senão dois
+/// convites simultâneos furam o limite antes de qualquer um ser aceito.
+model Invite {
+  id           String       @id @default(cuid())
+  tenantId     String
+  email        String
+  role         MembershipRole
+  tokenHash    String       @unique
+  status       InviteStatus @default(PENDENTE)
+  invitedById  String
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  createdAt    DateTime     @default(now())
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invitedBy Membership @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([email])
+}
+
+// -------------------------------------------------------------------------------------
+// ESTRUTURA ACADÊMICA
+// -------------------------------------------------------------------------------------
+
+model AcademicYear {
+  id        String   @id @default(cuid())
+  tenantId  String
+  year      Int
+  startDate DateTime
+  endDate   DateTime
+  isActive  Boolean  @default(true)
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  terms       Term[]
+  classes     Class[]
+  enrollments Enrollment[]
+
+  @@unique([tenantId, year])
+  @@index([tenantId, isActive])
+}
+
+model Term {
+  id             String   @id @default(cuid())
+  academicYearId String
+  name           String // ex: "1º Bimestre", "2º Trimestre"
+  order          Int
+  startDate      DateTime
+  endDate        DateTime
+
+  academicYear AcademicYear  @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  gradeConfigs GradeConfig[]
+  grades       Grade[]
+
+  @@index([academicYearId, order])
+}
+
+model Class {
+  id             String   @id @default(cuid())
+  tenantId       String
+  academicYearId String
+  name           String // ex: "9º Ano B"
+  gradeLevel     String? // ex: "9º Ano"
+  shift          String? // Manhã / Tarde / Noite / EAD
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  academicYear  AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  enrollments   Enrollment[]
+  classSubjects ClassSubject[]
+
+  @@index([tenantId, academicYearId])
+}
+
+model Subject {
+  id       String  @id @default(cuid())
+  tenantId String
+  name     String
+  code     String?
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  classSubjects ClassSubject[]
+
+  @@index([tenantId])
+}
+
+// Vínculo Turma <-> Disciplina <-> Professor responsável
+model ClassSubject {
+  id        String  @id @default(cuid())
+  classId   String
+  subjectId String
+  teacherId String?
+
+  class    Class       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject  Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher  Membership? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+
+  gradeConfigs GradeConfig[]
+  attendances  Attendance[]
+
+  @@unique([classId, subjectId])
+  @@index([teacherId])
+}
+
+// -------------------------------------------------------------------------------------
+// ALUNOS, MATRÍCULAS E RESPONSÁVEIS
+// -------------------------------------------------------------------------------------
+
+model Student {
+  id               String    @id @default(cuid())
+  tenantId         String
+  membershipId     String?   @unique // preenchido se/quando o portal do aluno existir
+  name             String
+  registrationCode String? // matrícula
+  birthDate        DateTime?
+  photoUrl         String?
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membership  Membership?       @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  enrollments Enrollment[]
+  guardians   StudentGuardian[]
+
+  @@index([tenantId, name])
+  @@index([tenantId, registrationCode])
+}
+
+model Guardian {
+  id           String  @id @default(cuid())
+  tenantId     String
+  membershipId String? @unique // preenchido se o responsável tiver login (role RESPONSAVEL)
+  name         String
+  email        String?
+  phone        String? // usado para disparo via WhatsApp/SMS
+  relationship String? // Pai, Mãe, Responsável legal...
+
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membership Membership?       @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  students   StudentGuardian[]
+
+  @@index([tenantId])
+}
+
+/// Vínculo puro aluno <-> responsável (quem pode ver o boletim de quem).
+/// O login do responsável (se existir) mora em `Guardian.membershipId`, não aqui.
+model StudentGuardian {
+  id         String @id @default(cuid())
+  studentId  String
+  guardianId String
+
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  guardian Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, guardianId])
+}
+
+model Enrollment {
+  id             String           @id @default(cuid())
+  studentId      String
+  classId        String
+  academicYearId String
+  status         EnrollmentStatus @default(ATIVA)
+  enrolledAt     DateTime         @default(now())
+
+  student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class        Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  grades      Grade[]
+  attendances Attendance[]
+
+  @@unique([studentId, classId, academicYearId])
+  @@index([classId, status])
+}
+
+// -------------------------------------------------------------------------------------
+// AVALIAÇÕES, NOTAS E FREQUÊNCIA
+// -------------------------------------------------------------------------------------
+
+// Define as avaliações e pesos de uma disciplina dentro de um bimestre/trimestre
+model GradeConfig {
+  id             String         @id @default(cuid())
+  classSubjectId String
+  termId         String
+  name           String // ex: "Prova 1", "Trabalho em grupo"
+  typeId         String
+  weight         Decimal   @default(1) @db.Decimal(5, 2)
+  maxScore       Decimal   @default(10) @db.Decimal(5, 2)
+  order          Int       @default(0)
+  scheduledDate  DateTime? // "Data" no stepper de Nova Avaliação — opcional, nem toda avaliação tem data marcada
+  hasRecovery    Boolean   @default(false) // "Recuperação" no stepper — se este item permite prova de recuperação
+  createdAt      DateTime  @default(now()) // usado pelo dashboard ("avaliações no mês") e pela timeline de Detalhes da Turma
+
+  classSubject ClassSubject         @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+  term         Term                 @relation(fields: [termId], references: [id], onDelete: Cascade)
+  type         EvaluationTypeOption @relation(fields: [typeId], references: [id])
+  grades       Grade[]
+
+  @@index([classSubjectId, termId])
+  @@index([typeId])
+}
+
+/// Tipos de avaliação (Prova, Trabalho, Seminário...) editáveis POR TENANT —
+/// antes era um enum fixo no código (`EvaluationType`), trocado por esta
+/// tabela pra que cada escola possa adicionar/renomear/desativar seus
+/// próprios tipos sem precisar de deploy. Todo tenant novo nasce com um
+/// conjunto padrão (ver seed em `POST /api/workspaces` e a migration que
+/// backfillou os tenants existentes) — dali em diante é só dado, editável
+/// em `/tipos-avaliacao`.
+model EvaluationTypeOption {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  gradeConfigs GradeConfig[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, active])
+}
+
+model Grade {
+  id            String   @id @default(cuid())
+  enrollmentId  String
+  gradeConfigId String
+  termId        String
+  value         Decimal? @db.Decimal(5, 2)
+  updatedById   String?
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+
+  enrollment  Enrollment  @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  gradeConfig GradeConfig @relation(fields: [gradeConfigId], references: [id], onDelete: Cascade)
+  term        Term        @relation(fields: [termId], references: [id], onDelete: Cascade)
+  updatedBy   Membership? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  // Uma nota por aluno/avaliação — chave usada pelo auto-save da grid
+  @@unique([enrollmentId, gradeConfigId])
+  @@index([enrollmentId, termId])
+}
+
+model Attendance {
+  id             String   @id @default(cuid())
+  enrollmentId   String
+  classSubjectId String
+  date           DateTime
+  present        Boolean  @default(true)
+  justified      Boolean  @default(false)
+
+  enrollment   Enrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  classSubject ClassSubject @relation(fields: [classSubjectId], references: [id], onDelete: Cascade)
+
+  @@unique([enrollmentId, classSubjectId, date])
+  @@index([classSubjectId, date])
+}
+
+/// Dedup do aviso de faltas consecutivas (attendance-alert.service.ts): sem
+/// isso, rodar o cron duas vezes no mesmo dia (retry da Vercel, disparo
+/// manual) reenviaria o mesmo e-mail — `lastAbsenceDate` é a data da falta
+/// que FECHOU o streak que gerou o alerta; uma linha aqui bloqueia reenvio
+/// pro mesmo streak, mas não impede um streak NOVO e mais longo depois.
+model AbsenceAlertLog {
+  id              String   @id @default(cuid())
+  enrollmentId    String
+  classSubjectId  String
+  lastAbsenceDate DateTime
+  createdAt       DateTime @default(now())
+
+  @@unique([enrollmentId, classSubjectId, lastAbsenceDate])
+}
+
+// -------------------------------------------------------------------------------------
+// ASSINATURA / PLANOS (SaaS)
+// -------------------------------------------------------------------------------------
+
+enum PlanTier {
+  TESTE_GRATIS // 5 dias, 1 usuário, acesso completo
+  MENSAL_BASE // R$99,00/mês — até 3 usuários
+  MENSAL_AVANCADO // R$169,90/mês — até 10 usuários
+  TRIMESTRAL // R$272,00 a cada 90 dias (~R$90,67/mês) — até 15 usuários
+  SEMESTRAL // R$675,00 a cada 180 dias (~R$112,50/mês) — até 30 usuários, sem teto de turma/aluno
+}
+
+enum SubscriptionStatus {
+  ATIVA
+  EXPIRADA
+  CANCELADA
+  INADIMPLENTE
+}
+
+/// Catálogo de planos — ao contrário da versão anterior (limites hard-coded
+/// em lib/billing/plans.ts), agora mora no banco: permite ajustar preço/teto
+/// sem deploy. `tier` é a chave estável que o código referencia (enum, não
+/// string solta); os dados de negócio (preço, tetos, features) vivem aqui.
+model Plan {
+  id                     String   @id @default(cuid())
+  tier                   PlanTier @unique
+  name                   String
+  durationDays           Int
+  maxUsers               Int? // teto de Memberships ativas (+ convites pendentes) por tenant; null = ilimitado
+  maxClasses             Int? // null = ilimitado
+  maxStudents            Int? // null = ilimitado
+  maxOcrPerMonth         Int? // teto de lançamentos por foto (IA) por ciclo de 30 dias; null = ilimitado
+  priceCentsTotal        Int // valor cobrado no ciclo inteiro (ex: R$672 no trimestral = 67200)
+  priceCentsMonthlyEquiv Int // só informativo, pra exibir "equivale a R$224/mês"
+  features               Json // ver PlanFeatures em repositories/plan.repository.ts (fonte única da forma deste JSON)
+  active                 Boolean  @default(true)
+
+  // Rate limit de IA por CICLO PRÓPRIO do plano (ex: Mensal Base = 4 usos
+  // a cada 7h) — os dois precisam estar preenchidos JUNTOS pra ativar esse
+  // modo; null nos dois (padrão) mantém o teto geral de
+  // `RATE_LIMIT_MAX_CALLS`/`RATE_LIMIT_WINDOW_MS` (30/hora, janela
+  // deslizante) em services/ai/guard.ts, sem mudar nada pros planos que já
+  // usam esse teto hoje. Configurável aqui (não hardcoded) de propósito —
+  // ajustar depois de ver uso real não deve exigir deploy de código.
+  aiRateLimitMaxCalls    Int?
+  aiRateLimitWindowHours Int?
+
+  @@index([active])
+}
+
+/// 1:1 com Tenant. Criada automaticamente como TESTE_GRATIS (5 dias) quando
+/// o workspace nasce. Os limites/preços do plano em si moram em `Plan`
+/// (join por `tier`); aqui fica só o estado da assinatura: qual plano, até
+/// quando, e o vínculo com o gateway de pagamento quando houver.
+model Subscription {
+  id               String             @id @default(cuid())
+  tenantId         String             @unique
+  tier             PlanTier           @default(TESTE_GRATIS)
+  status           SubscriptionStatus @default(ATIVA)
+  trialEndsAt      DateTime? // preenchido só quando tier = TESTE_GRATIS
+  currentPeriodEnd DateTime? // fim do ciclo pago (mensal/anual)
+  externalId       String? // id da assinatura no gateway (Asaas: sub_...)
+  customerExternalId String? // id do cliente no gateway (Asaas: cus_...)
+
+  // Contador de uso de OCR/IA no ciclo atual — protege contra custo de tokens
+  // acima do previsto pelo plano. O TETO por plano mora em `Plan.maxOcrPerMonth`,
+  // igual aos demais limites; aqui só o contador.
+  ocrUsedThisPeriod Int      @default(0)
+  ocrPeriodStart    DateTime @default(now())
+
+  // Mesmo padrão do par acima, pro rate limit de IA em CICLO PRÓPRIO
+  // (`Plan.aiRateLimitMaxCalls`/`aiRateLimitWindowHours`) — só usado quando
+  // o plano tem os dois campos preenchidos; ignorado pros planos que usam
+  // o teto geral (30/hora, janela deslizante).
+  aiUsedThisCycle Int      @default(0)
+  aiCycleStart    DateTime @default(now())
+
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+/// Link de download temporário/assinado pra "Compartilhar no WhatsApp" —
+/// o wa.me só aceita compartilhar TEXTO (link), nunca anexar arquivo
+/// direto, e as rotas de export atuais exigem cookie de sessão (não
+/// funcionariam coladas cruas num link de WhatsApp). O token aqui É a
+/// autenticação — resolve o tenant/arquivo sem passar por `withTenant`.
+/// Curta duração de propósito (15min, ver `EXPORT_SHARE_LINK_TTL_MS` em
+/// `services/export/share-link.service.ts`) — é um link de conveniência
+/// pro professor compartilhar o que ELE MESMO acabou de gerar, não um
+/// link permanente público.
+model ExportShareLink {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  tenantId  String
+  kind      String // "dashboard-pdf" | "dashboard-excel" | "boletim-pdf" | "receipt-pdf"
+  params    Json // {} | {enrollmentId} | {receiptId} — conforme `kind`
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+/// Dedupe de eventos de webhook de pagamento (Mercado Pago, Asaas, e o Pix
+/// avulso da Etapa 3) — gateways entregam "at least once", então o mesmo
+/// evento pode chegar 2+ vezes. `@@unique([gateway, eventId])` é o que
+/// impede reprocessar (e reenviar e-mail de pagamento duplicado, ativar
+/// plano duas vezes, etc.).
+model WebhookEvent {
+  id         String   @id @default(cuid())
+  gateway    String // "mercadopago" | "asaas"
+  eventId    String // ex.: "payment:123456" (MP) ou "PAYMENT_CONFIRMED:pay_abc" (Asaas)
+  receivedAt DateTime @default(now())
+
+  @@unique([gateway, eventId])
+}
+
+// -------------------------------------------------------------------------------------
+// AUDITORIA GERAL (mutações em dados sensíveis)
+// -------------------------------------------------------------------------------------
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  UPSERT
+  DELETE
+  BATCH_CREATE
+  BATCH_UPDATE
+  BATCH_DELETE
+}
+
+/// Uma linha por mutação em modelo auditado (Grade, Attendance, Class, etc.).
+/// Preenchida AUTOMATICAMENTE pela Client Extension em lib/prisma.ts — nenhuma
+/// rota precisa lembrar de gravar audit; se a mutação passou pelo client, ela
+/// foi registrada. `membershipId`/`ip`/`userAgent` vêm do AsyncLocalStorage
+/// populado pelo withTenant.
+model AuditLog {
+  id           String      @id @default(cuid())
+  tenantId     String?
+  membershipId String?
+  ip           String?
+  userAgent    String?
+  action       AuditAction
+  model        String // nome do modelo Prisma (ex: "Grade")
+  recordId     String? // id do registro afetado (null em operações batch)
+  oldValue     Json? // estado anterior (UPDATE/DELETE; null em CREATE)
+  newValue     Json? // dados da mutação (CREATE/UPDATE; null em DELETE)
+  createdAt    DateTime    @default(now())
+
+  tenant     Tenant?     @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  membership Membership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, model, recordId])
+  @@index([tenantId, createdAt])
+}
+
+// -------------------------------------------------------------------------------------
+// AUDITORIA DE IMPORTAÇÃO
+// -------------------------------------------------------------------------------------
+
+enum ImportStatus {
+  SUCESSO
+  FALHOU
+}
+
+/// Um registro por commit de import bem-sucedido (ou tentativa que falhou).
+/// `idempotencyKey` é o que impede o backend de processar a mesma planilha
+/// duas vezes se o professor clicar "Importar" de novo (double-click, retry
+/// de rede) — ver commit/route.ts.
+model ImportHistory {
+  id              String       @id @default(cuid())
+  tenantId        String
+  membershipId    String // quem importou
+  classId         String
+  classSubjectId  String
+  termId          String
+  fileName        String?
+  idempotencyKey  String       @unique
+  rowsProcessed   Int
+  studentsCreated Int
+  gradesCreated   Int
+  gradesUpdated   Int
+  status          ImportStatus @default(SUCESSO)
+  errorMessage    String?
+  createdAt       DateTime     @default(now())
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, classId])
+  @@index([idempotencyKey])
+}
+
+// -------------------------------------------------------------------------------------
+// NOTIFICAÇÕES (WHATSAPP / SMS / E-MAIL)
+// -------------------------------------------------------------------------------------
+
+model NotificationTemplate {
+  id        String              @id @default(cuid())
+  tenantId  String
+  trigger   NotificationTrigger
+  channel   NotificationChannel
+  name      String
+  // Corpo com placeholders: {{nome_aluno}}, {{nota}}, {{disciplina}}, {{turma}}, {{responsavel}}
+  body      String
+  active    Boolean             @default(true)
+  createdAt DateTime            @default(now())
+
+  tenant Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  logs   NotificationLog[]
+
+  @@index([tenantId, trigger])
+}
+
+model NotificationLog {
+  id          String              @id @default(cuid())
+  templateId  String
+  studentId   String?
+  guardianId  String?
+  channel     NotificationChannel
+  status      NotificationStatus  @default(PENDENTE)
+  payload     Json?
+  sentAt      DateTime?
+  createdAt   DateTime            @default(now())
+
+  template NotificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, status])
+}
+
+// -------------------------------------------------------------------------------------
+// IA (resumo de desempenho, sugestão de observações, chat de perguntas)
+// -------------------------------------------------------------------------------------
+
+enum AiFeature {
+  RESUMO_DESEMPENHO
+  SUGESTAO_OBSERVACAO
+  CHAT_PERGUNTAS
+  GERADOR_PROVA
+  GERADOR_FLASHCARDS
+  PLANO_AULA
+  ADAPTADOR_TEXTO
+  CORRECAO_REDACAO
+  ACESSIBILIDADE
+  DESCRICAO_IMAGEM
+}
+
+/// Uma linha por chamada de IA (sucesso ou falha) — serve DOIS propósitos ao
+/// mesmo tempo: (1) auditoria (quem, quando, qual feature — nunca o
+/// conteúdo da resposta, ver Etapa 5) e (2) substrato do rate limit (conta
+/// linhas recentes por tenant, ver lib/ai/guard.ts). Um índice, dois usos —
+/// evita duas tabelas fazendo quase a mesma coisa.
+model AiUsageLog {
+  id           String    @id @default(cuid())
+  tenantId     String
+  membershipId String
+  feature      AiFeature
+  success      Boolean
+  inputTokens  Int?
+  outputTokens Int?
+  createdAt    DateTime  @default(now())
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, feature, createdAt])
+}
+
+/// Cache do resumo de desempenho (Etapa 1) — válido por 24h E enquanto
+/// `dataVersion` não mudar (fingerprint barato: contagem + updatedAt mais
+/// recente das notas do escopo). Some das duas condições é o "24h OU até
+/// novos dados" pedido: se a janela de 24h não passou MAS o professor
+/// acabou de lançar nota, o dataVersion muda e a versão salva vira stale de
+/// qualquer forma.
+model AiSummaryCache {
+  id          String   @id @default(cuid())
+  tenantId    String
+  scopeType   String // "CLASS" | "STUDENT"
+  scopeId     String // classId ou studentId, dependendo de scopeType
+  termId      String
+  dataVersion String
+  summary     String   @db.Text
+  generatedAt DateTime @default(now())
+
+  @@unique([tenantId, scopeType, scopeId, termId])
+}
+
+enum ObservationFeedback {
+  POSITIVO
+  NEGATIVO
+}
+
+/// Sugestões de observação de boletim (Etapa 2) — a IA nunca escreve direto
+/// no boletim; isto é só a sugestão + o feedback do professor (pra calibrar
+/// o prompt depois). `suggestions` guarda as 2-3 opções geradas.
+model AiObservationSuggestion {
+  id           String               @id @default(cuid())
+  tenantId     String
+  studentId    String
+  termId       String
+  membershipId String // professor que pediu
+  suggestions  Json // string[]
+  feedback     ObservationFeedback?
+  feedbackAt   DateTime?
+  createdAt    DateTime             @default(now())
+
+  @@index([tenantId, studentId, termId])
+}
+
+/// Uma conversa nomeada do chat da One (sidebar estilo ChatGPT) — antes só
+/// existia uma lista corrida por (tenant, membership), sem conceito de
+/// "conversa" com id próprio. `title` é derivado da primeira mensagem do
+/// usuário (truncada) na hora da criação, não editável por enquanto.
+model AiChatConversation {
+  id           String   @id @default(cuid())
+  tenantId     String
+  membershipId String
+  title        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  messages AiChatMessage[]
+
+  @@index([tenantId, membershipId, updatedAt])
+}
+
+/// Histórico do chat de perguntas (Etapa 3) — agora escopado por
+/// `conversationId` (era só por tenant+membership, uma lista corrida só).
+model AiChatMessage {
+  id             String   @id @default(cuid())
+  tenantId       String
+  membershipId   String
+  conversationId String
+  role           String // "user" | "assistant"
+  content        String   @db.Text
+  createdAt      DateTime @default(now())
+
+  conversation AiChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, membershipId, createdAt])
+  @@index([conversationId, createdAt])
+}
+
+/// Prova/questionário gerado (Etapa 1 da expansão de produtividade docente).
+/// Só o RESULTADO estruturado é persistido — nunca o texto-fonte enviado
+/// pelo professor (documento/foto), pra não guardar indefinidamente um
+/// conteúdo de terceiro (direito autoral) ou dado sensível que só era
+/// necessário no momento da geração. Existir aqui é só o que permite o PDF
+/// ser baixado depois sem chamar a IA de novo.
+model AiGeneratedExam {
+  id           String   @id @default(cuid())
+  tenantId     String
+  membershipId String
+  title        String
+  content      Json // { multipleChoice: [...], essay: [...] } — ver ExamContent em exam-generator.service.ts
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+}
+
+/// Conjunto de flashcards gerado (Etapa 2). Mesmo princípio do
+/// AiGeneratedExam: só o resultado estruturado é persistido, nunca o
+/// texto-fonte — existir aqui é só o que permite exportar o CSV (Anki)
+/// depois sem chamar a IA de novo.
+model AiFlashcardSet {
+  id           String   @id @default(cuid())
+  tenantId     String
+  membershipId String
+  title        String
+  content      Json // { cards: [{ question, answer }] } — ver FlashcardContent em flashcard-generator.service.ts
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+}
+
+/// Plano de aula gerado (Etapa 3). O disclaimer de BNCC ("confirme o
+/// alinhamento antes de usar oficialmente") NUNCA vem da IA — é fixo,
+/// adicionado pelo código em lesson-plan.service.ts, pra não depender do
+/// modelo lembrar de incluí-lo.
+model AiLessonPlan {
+  id           String   @id @default(cuid())
+  tenantId     String
+  membershipId String
+  title        String
+  content      Json // { bnccCompetencies, introduction, development, practicalActivity, assessment } — ver LessonPlanContent
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+}
+
+/// Correção de redação — híbrida (Etapa 5 original: só IA; expansão
+/// posterior: adicionou o caminho manual). `gradedBy` distingue as duas
+/// (default "ai" preserva as linhas antigas sem migração de dado). No
+/// caminho IA a nota é sempre SUGERIDA, nunca final (ver
+/// `isSuggestion`/disclaimer fixos em essay-grading.service.ts, nunca
+/// gerados pela IA); no caminho manual quem atribui a nota é o próprio
+/// professor. Os dois alimentam o MESMO histórico (mesma tabela, filtrado
+/// por `studentLabel`) — de propósito, nenhuma tabela paralela.
+/// `studentLabel` é só um rótulo livre (nome digitado pelo professor) — de
+/// propósito NÃO é uma FK pro model Student: esta feature nunca escreve na
+/// tabela `Grade` oficial, só produz uma análise à parte que o professor
+/// decide (ou não) usar.
+model AiEssayGrading {
+  id           String   @id @default(cuid())
+  tenantId     String
+  membershipId String
+  studentLabel String?
+  gradedBy     String   @default("ai") // "ai" | "human"
+  essayText    String?  @db.Text // texto da redação (IA não persistia isso; manual precisa pra reexibir no histórico)
+  content      Json // { isSuggestion, disclaimer, overallScore, competencyScores, strengths, improvements, studentFeedback } (IA) ou { gradedBy:"human", overallScore, overallMaxScore, annotations, studentFeedback? } (manual)
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, studentLabel])
+}
+
+// -------------------------------------------------------------------------------------
+// COMPROVANTE DE PAGAMENTO
+// -------------------------------------------------------------------------------------
+
+/// Uma linha por pagamento confirmado (qualquer gateway) — os dados
+/// mínimos pro comprovante em PDF (Etapa A3). O PDF em si NUNCA fica
+/// pré-gerado/armazenado: é renderizado sob demanda a partir destes campos,
+/// tanto no download quanto no e-mail automático (ver
+/// lib/billing/{mercadopago,asaas}.ts / webhooks).
+model PaymentReceipt {
+  id                String   @id @default(cuid())
+  tenantId          String
+  gateway           String // "mercadopago" | "asaas"
+  externalPaymentId String // id do pagamento no gateway
+  planTier          PlanTier
+  planName          String
+  amountCents       Int
+  paidAt            DateTime
+  createdAt         DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([gateway, externalPaymentId])
+  @@index([tenantId, createdAt])
+}

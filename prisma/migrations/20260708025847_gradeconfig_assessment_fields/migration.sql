@@ -1,0 +1,7 @@
+-- AlterEnum
+ALTER TYPE "EvaluationType" ADD VALUE 'DIAGNOSTICA';
+
+-- AlterTable
+ALTER TABLE "GradeConfig" ADD COLUMN     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN     "hasRecovery" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "scheduledDate" TIMESTAMP(3);

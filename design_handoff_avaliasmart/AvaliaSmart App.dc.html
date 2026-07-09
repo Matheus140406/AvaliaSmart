@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#f6f8fb;font-family:'Manrope',system-ui,sans-serif;color:#0f172a;-webkit-font-smoothing:antialiased}
+a{color:#3b5bd9;text-decoration:none}a:hover{color:#2a45b8}
+input,select,button,textarea{font-family:inherit}
+input:focus,select:focus{outline:none}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:9px}
+::-webkit-scrollbar-thumb:hover{background:#b3bfd0}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes growBar{from{height:0}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;">
+
+<!-- ============ LOGIN ============ -->
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+  <div style="min-height:100vh;display:flex;">
+    <sc-if value="{{ wide }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;background:linear-gradient(150deg,#3b5bd9 0%,#4f46e5 55%,#6366f1 100%);color:#fff;padding:56px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:44px;height:44px;border-radius:50%;overflow:hidden;background:#fff;"><img src="uploads/icon-one.png" alt="One" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
+          <span style="font-family:'Space Grotesk';font-weight:700;font-size:20px;">AvaliaSmart</span>
+        </div>
+        <div>
+          <div style="font-family:'Space Grotesk';font-weight:700;font-size:38px;line-height:1.15;letter-spacing:-.5px;max-width:440px;">Notas, frequência e insights — em um só lugar.</div>
+          <div style="font-size:16px;opacity:.85;margin-top:18px;max-width:420px;line-height:1.6;">Do lançamento de notas ao boletim em PDF, com a assistente One ajudando você a entender cada turma.</div>
+        </div>
+        <div style="display:flex;gap:28px;font-size:14px;opacity:.9;">
+          <div><div style="font-family:'Space Grotesk';font-weight:700;font-size:24px;">4.2k+</div>professores</div>
+          <div><div style="font-family:'Space Grotesk';font-weight:700;font-size:24px;">120k+</div>boletins gerados</div>
+        </div>
+        <div style="position:absolute;right:-90px;bottom:-90px;width:320px;height:320px;border-radius:50%;background:rgba(255,255,255,.08);"></div>
+      </div>
+    </sc-if>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:32px;background:#fff;">
+      <div style="width:100%;max-width:380px;animation:fadeUp .5s ease;">
+        <sc-if value="{{ narrow }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:11px;margin-bottom:28px;">
+            <div style="width:40px;height:40px;border-radius:50%;overflow:hidden;background:#eef1fb;border:1px solid #dbe7f5;"><img src="uploads/icon-one.png" alt="One" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
+            <span style="font-family:'Space Grotesk';font-weight:700;font-size:19px;color:#0f172a;">AvaliaSmart</span>
+          </div>
+        </sc-if>
+        <div style="font-family:'Space Grotesk';font-weight:700;font-size:26px;color:#0f172a;">Bem-vindo de volta</div>
+        <div style="color:#64748b;font-size:14.5px;margin-top:6px;">Entre para acessar suas turmas.</div>
+
+        <div style="margin-top:28px;">
+          <label style="font-size:13px;font-weight:600;color:#334155;">E-mail</label>
+          <input value="{{ email }}" onChange="{{ onEmail }}" type="email" placeholder="voce@escola.com.br" style="{{ emailStyle }}">
+          <sc-if value="{{ emailErr }}" hint-placeholder-val="{{ false }}"><div style="color:#ef4444;font-size:12.5px;margin-top:6px;">{{ emailErr }}</div></sc-if>
+        </div>
+        <div style="margin-top:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;"><label style="font-size:13px;font-weight:600;color:#334155;">Senha</label><a href="#" onClick="{{ onForgot }}" style="font-size:12.5px;font-weight:600;">Esqueci minha senha</a></div>
+          <input value="{{ senha }}" onChange="{{ onSenha }}" type="password" placeholder="••••••••" style="{{ senhaStyle }}">
+          <sc-if value="{{ senhaErr }}" hint-placeholder-val="{{ false }}"><div style="color:#ef4444;font-size:12.5px;margin-top:6px;">{{ senhaErr }}</div></sc-if>
+        </div>
+
+        <button onClick="{{ onLogin }}" style="width:100%;margin-top:24px;padding:13px;border:none;border-radius:12px;background:#3b5bd9;color:#fff;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 8px 20px -8px rgba(59,91,217,.6);" style-hover="background:#2a45b8;">Entrar</button>
+
+        <div style="display:flex;align-items:center;gap:12px;margin:22px 0;color:#94a3b8;font-size:12px;"><div style="flex:1;height:1px;background:#e2e8f0;"></div>ou<div style="flex:1;height:1px;background:#e2e8f0;"></div></div>
+        <button onClick="{{ onLogin }}" style="width:100%;padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:#fff;color:#334155;font-weight:600;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;" style-hover="background:#f8fafc;">
+          <span style="width:18px;height:18px;border-radius:50%;background:conic-gradient(#ea4335,#fbbc05,#34a853,#4285f4,#ea4335);display:inline-block;"></span>Entrar com Google
+        </button>
+        <div style="text-align:center;color:#94a3b8;font-size:12px;margin-top:18px;">Demo — use qualquer e-mail e senha para entrar.</div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<!-- ============ APP SHELL ============ -->
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;min-height:100vh;">
+
+    <sc-if value="{{ showScrim }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ closeSidebar }}" style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:40;"></div>
+    </sc-if>
+
+    <!-- SIDEBAR -->
+    <aside style="{{ sidebarStyle }}">
+      <div style="display:flex;align-items:center;gap:11px;padding:4px 6px 22px;">
+        <div style="width:38px;height:38px;border-radius:50%;overflow:hidden;background:#eef1fb;border:1px solid #dbe7f5;flex:none;"><img src="uploads/icon-one.png" alt="One" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
+        <span style="font-family:'Space Grotesk';font-weight:700;font-size:18px;color:#0f172a;">AvaliaSmart</span>
+      </div>
+
+      <button onClick="{{ goCreate }}" style="width:100%;margin-bottom:18px;padding:11px;border:none;border-radius:11px;background:#3b5bd9;color:#fff;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 18px -9px rgba(59,91,217,.7);" style-hover="background:#2a45b8;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Nova avaliação
+      </button>
+
+      <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#94a3b8;padding:6px 8px 8px;">MENU</div>
+      <nav style="display:flex;flex-direction:column;gap:3px;">
+        <div onClick="{{ goDashboard }}" style="{{ navDash }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Dashboard
+        </div>
+        <div onClick="{{ goDetails }}" style="{{ navTurmas }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 13l9 5 9-5M3 18l9 5 9-5"/></svg>Turmas
+        </div>
+        <div onClick="{{ goDashboard }}" style="{{ navAval }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l1 2h3v16H5V5h3l1-2Z"/><path d="M9 12l2 2 4-4"/></svg>Avaliações
+        </div>
+        <div onClick="{{ goDashboard }}" style="{{ navAlunos }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M17 8.5a3 3 0 0 1 0 5M18 20a5 5 0 0 0-3-4.6"/></svg>Alunos
+        </div>
+        <div onClick="{{ goDashboard }}" style="{{ navRel }}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Relatórios
+        </div>
+      </nav>
+
+      <div style="margin-top:auto;display:flex;flex-direction:column;gap:3px;">
+        <a href="One%20-%20Avaliacao%20Iterativa.dc.html" style="display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;font-weight:600;font-size:14px;color:#3b5bd9;background:#eef1fb;border:1px solid #dbe4fb;" style-hover="background:#e2e8fb;">
+          <span style="width:22px;height:22px;border-radius:50%;overflow:hidden;background:#fff;flex:none;"><img src="uploads/icon-one.png" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></span>Falar com a One
+        </a>
+        <div style="display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;font-weight:600;font-size:14px;color:#64748b;cursor:pointer;" style-hover="background:#f1f5f9;color:#1e293b;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L16.2 2h-4l-.4 2.4a7 7 0 0 0-2 1.2l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-.9c.6.5 1.3.9 2 1.2l.4 2.4h4l.4-2.4c.7-.3 1.4-.7 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2Z"/></svg>Configurações
+        </div>
+        <div onClick="{{ goLogin }}" style="display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;font-weight:600;font-size:14px;color:#64748b;cursor:pointer;" style-hover="background:#fef2f2;color:#ef4444;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5M4 12h11"/></svg>Sair
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+      <header style="height:66px;flex:none;background:#fff;border-bottom:1px solid #e6ebf2;display:flex;align-items:center;gap:14px;padding:0 24px;position:sticky;top:0;z-index:30;">
+        <sc-if value="{{ narrow }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ openSidebar }}" style="width:38px;height:38px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#334155;">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+        </sc-if>
+        <div style="font-family:'Space Grotesk';font-weight:600;font-size:18px;color:#0f172a;">{{ pageTitle }}</div>
+        <div style="flex:1;"></div>
+        <sc-if value="{{ showSearch }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:8px;background:#f1f5f9;border:1px solid #e6ebf2;border-radius:11px;padding:8px 12px;width:240px;max-width:38vw;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+            <input value="{{ search }}" onChange="{{ onSearch }}" placeholder="Buscar…" style="border:none;background:transparent;font-size:14px;width:100%;color:#0f172a;">
+          </div>
+        </sc-if>
+        <button style="width:38px;height:38px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;position:relative;color:#334155;display:flex;align-items:center;justify-content:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span style="position:absolute;top:8px;right:9px;width:7px;height:7px;background:#ef4444;border-radius:50%;border:1.5px solid #fff;"></span>
+        </button>
+        <div style="display:flex;align-items:center;gap:9px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:#3b5bd9;color:#fff;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;">MR</div>
+          <sc-if value="{{ wide }}" hint-placeholder-val="{{ true }}"><div><div style="font-size:13.5px;font-weight:700;color:#0f172a;line-height:1.1;">Marina Reis</div><div style="font-size:12px;color:#94a3b8;">Professora</div></div></sc-if>
+        </div>
+      </header>
+
+      <div style="flex:1;overflow-y:auto;padding:26px 24px 40px;">
+
+        <!-- ===== DASHBOARD ===== -->
+        <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+          <div style="max-width:1120px;margin:0 auto;animation:fadeUp .4s ease;">
+            <div style="display:grid;grid-template-columns:{{ metricCols }};gap:16px;">
+              <sc-for list="{{ metrics }}" as="mt" hint-placeholder-count="4">
+                <div style="background:#fff;border:1px solid #e6ebf2;border-radius:16px;padding:18px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div style="width:38px;height:38px;border-radius:10px;background:{{ mt.iconBg }};color:{{ mt.iconFg }};display:flex;align-items:center;justify-content:center;font-weight:800;font-family:Space Grotesk;">{{ mt.glyph }}</div>
+                    <span style="{{ mt.deltaStyle }}">{{ mt.delta }}</span>
+                  </div>
+                  <div style="font-family:'Space Grotesk';font-weight:700;font-size:28px;color:#0f172a;margin-top:14px;line-height:1;">{{ mt.value }}</div>
+                  <div style="font-size:13px;color:#64748b;margin-top:5px;">{{ mt.label }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:grid;grid-template-columns:{{ chartCols }};gap:16px;margin-top:16px;">
+              <div style="background:#fff;border:1px solid #e6ebf2;border-radius:16px;padding:20px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                  <div style="font-weight:700;font-size:15px;color:#0f172a;">Média por turma</div>
+                  <div style="font-size:12px;color:#94a3b8;">1º Bimestre</div>
+                </div>
+                <div style="display:flex;align-items:flex-end;gap:14px;height:190px;padding-top:18px;">
+                  <sc-for list="{{ barData }}" as="b" hint-placeholder-count="6">
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;">
+                      <div style="font-size:12px;font-weight:700;color:#475569;">{{ b.val }}</div>
+                      <div style="width:100%;max-width:34px;border-radius:7px 7px 3px 3px;background:{{ b.color }};height:{{ b.h }};animation:growBar .6s ease;"></div>
+                      <div style="font-size:12px;color:#94a3b8;font-weight:600;">{{ b.nome }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="background:#fff;border:1px solid #e6ebf2;border-radius:16px;padding:20px;display:flex;flex-direction:column;">
+                <div style="font-weight:700;font-size:15px;color:#0f172a;margin-bottom:16px;">Situação dos alunos</div>
+                <div style="display:flex;align-items:center;justify-content:center;margin:6px 0 18px;">
+                  <div style="width:150px;height:150px;border-radius:50%;background:{{ donut }};display:flex;align-items:center;justify-content:center;">
+                    <div style="width:98px;height:98px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+                      <div style="font-family:'Space Grotesk';font-weight:700;font-size:22px;color:#0f172a;">243</div>
+                      <div style="font-size:11px;color:#94a3b8;">alunos</div>
+                    </div>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:9px;">
+                  <sc-for list="{{ donutLegend }}" as="d" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;gap:9px;font-size:13px;"><span style="width:10px;height:10px;border-radius:3px;background:{{ d.color }};"></span><span style="color:#475569;flex:1;">{{ d.label }}</span><span style="font-weight:700;color:#0f172a;">{{ d.pct }}</span></div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <!-- ACTIVITIES TABLE -->
+            <div style="background:#fff;border:1px solid #e6ebf2;border-radius:16px;margin-top:16px;overflow:hidden;">
+              <div style="padding:18px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eef2f7;">
+                <div style="font-weight:700;font-size:15px;color:#0f172a;">Atividades recentes</div>
+                <div style="font-size:12.5px;color:#94a3b8;">{{ actCount }} registros</div>
+              </div>
+              <div style="overflow-x:auto;">
+                <div style="min-width:560px;">
+                  <div style="display:grid;grid-template-columns:2fr 2.2fr 1fr 1.1fr;gap:12px;padding:12px 20px;background:#fafbfd;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:700;letter-spacing:.3px;color:#94a3b8;">
+                    <div>ALUNO / TURMA</div><div>AÇÃO</div><div>DATA</div><div>STATUS</div>
+                  </div>
+                  <sc-for list="{{ pageRows }}" as="r" hint-placeholder-count="5">
+                    <div style="display:grid;grid-template-columns:2fr 2.2fr 1fr 1.1fr;gap:12px;padding:13px 20px;border-bottom:1px solid #f1f5f9;align-items:center;font-size:13.5px;" style-hover="background:#fafbfd;">
+                      <div style="display:flex;align-items:center;gap:10px;"><div style="width:32px;height:32px;border-radius:9px;background:{{ r.avBg }};color:{{ r.avFg }};font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">{{ r.ini }}</div><div style="font-weight:600;color:#1e293b;">{{ r.who }}</div></div>
+                      <div style="color:#475569;">{{ r.acao }}</div>
+                      <div style="color:#94a3b8;">{{ r.data }}</div>
+                      <div><span style="{{ r.statusStyle }}">{{ r.status }}</span></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="padding:14px 20px;display:flex;align-items:center;justify-content:space-between;">
+                <div style="font-size:13px;color:#94a3b8;">{{ pageLabel }}</div>
+                <div style="display:flex;gap:8px;">
+                  <button onClick="{{ prevPage }}" style="{{ prevStyle }}">Anterior</button>
+                  <button onClick="{{ nextPage }}" style="{{ nextStyle }}">Próximo</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ===== CREATE (STEPPER) ===== -->
+        <sc-if value="{{ isCreate }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:720px;margin:0 auto;animation:fadeUp .4s ease;">
+            <sc-if value="{{ created }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#fff;border:1px solid #e6ebf2;border-radius:18px;padding:44px 32px;text-align:center;">
+                <div style="width:66px;height:66px;border-radius:50%;background:#ecfdf5;color:#10b981;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                </div>
+                <div style="font-family:'Space Grotesk';font-weight:700;font-size:22px;color:#0f172a;">Avaliação criada!</div>
+                <div style="color:#64748b;font-size:14.5px;margin-top:8px;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.6;">“{{ fTitulo }}” foi adicionada à turma. Você já pode lançar as notas dos alunos.</div>
+                <div style="display:flex;gap:10px;justify-content:center;margin-top:24px;flex-wrap:wrap;">
+                  <button onClick="{{ goDetails }}" style="padding:11px 20px;border:none;border-radius:11px;background:#3b5bd9;color:#fff;font-weight:700;font-size:14px;cursor:pointer;">Ver turma</button>
+                  <button onClick="{{ resetCreate }}" style="padding:11px 20px;border:1px solid #e2e8f0;border-radius:11px;background:#fff;color:#334155;font-weight:600;font-size:14px;cursor:pointer;">Criar outra</button>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ notCreated }}" hint-placeholder-val="{{ true }}">
+              <div style="background:#fff;border:1px solid #e6ebf2;border-radius:18px;overflow:hidden;">
+                <!-- stepper header -->
+                <div style="padding:22px 26px;border-bottom:1px solid #eef2f7;">
+                  <div style="font-family:'Space Grotesk';font-weight:700;font-size:19px;color:#0f172a;margin-bottom:18px;">Nova avaliação</div>
+                  <div style="display:flex;align-items:center;">
+                    <sc-for list="{{ stepper }}" as="s" hint-placeholder-count="4">
+                      <div style="display:flex;align-items:center;{{ s.flex }}">
+                        <div style="display:flex;align-items:center;gap:9px;">
+                          <div style="{{ s.badge }}">{{ s.num }}</div>
+                          <sc-if value="{{ s.showLabel }}" hint-placeholder-val="{{ true }}"><div style="{{ s.label }}">{{ s.name }}</div></sc-if>
+                        </div>
+                        <sc-if value="{{ s.line }}" hint-placeholder-val="{{ true }}"><div style="flex:1;height:2px;margin:0 12px;background:{{ s.lineColor }};min-width:16px;"></div></sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <div style="padding:26px;">
+                  <!-- STEP 0 -->
+                  <sc-if value="{{ isStep0 }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;flex-direction:column;gap:18px;">
+                      <div>
+                        <label style="font-size:13px;font-weight:600;color:#334155;">Título da avaliação *</label>
+                        <input value="{{ fTitulo }}" onChange="{{ onTitulo }}" placeholder="Ex: Prova bimestral — Frações" style="{{ tituloStyle }}">
+                        <sc-if value="{{ errTitulo }}" hint-placeholder-val="{{ false }}"><div style="color:#ef4444;font-size:12.5px;margin-top:6px;">{{ errTitulo }}</div></sc-if>
+                      </div>
+                      <div style="display:grid;grid-template-columns:{{ dualCols }};gap:14px;">
+                        <div>
+                          <label style="font-size:13px;font-weight:600;color:#334155;">Turma *</label>
+                          <select value="{{ fTurma }}" onChange="{{ onTurma }}" style="{{ turmaStyle }}"><option value="">Selecione…</option><option>6º A</option><option>7º A</option><option>7º B</option><option>8º A</option><option>9º A</option></select>
+                          <sc-if value="{{ errTurma }}" hint-placeholder-val="{{ false }}"><div style="color:#ef4444;font-size:12.5px;margin-top:6px;">{{ errTurma }}</div></sc-if>
+                        </div>
+                        <div>
+                          <label style="font-size:13px;font-weight:600;color:#334155;">Disciplina</label>
+                          <select value="{{ fDisc }}" onChange="{{ onDisc }}" style="{{ selBase }}"><option>Matemática</option><option>Português</option><option>Ciências</option><option>História</option><option>Geografia</option></select>
+                        </div>
+                      </div>
+                      <div>
+                        <label style="font-size:13px;font-weight:600;color:#334155;">Tipo de avaliação</label>
+                        <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:8px;">
+                          <sc-for list="{{ tipos }}" as="t" hint-placeholder-count="4">
+                            <button onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</button>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <!-- STEP 1 CRITÉRIOS -->
+                  <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ false }}">
+                    <div>
+                      <div style="font-size:14px;color:#64748b;margin-bottom:16px;">Defina as competências e o peso de cada uma (a soma ideal é 100%).</div>
+                      <div style="display:flex;flex-direction:column;gap:10px;">
+                        <sc-for list="{{ criterios }}" as="c" hint-placeholder-count="2">
+                          <div style="display:flex;gap:10px;align-items:center;">
+                            <input value="{{ c.nome }}" onChange="{{ c.onNome }}" placeholder="Competência" style="flex:1;padding:11px 13px;border:1.5px solid #e2e8f0;border-radius:11px;font-size:14px;background:#fff;">
+                            <div style="display:flex;align-items:center;border:1.5px solid #e2e8f0;border-radius:11px;padding:0 12px;background:#fff;width:96px;"><input value="{{ c.peso }}" onChange="{{ c.onPeso }}" style="width:100%;padding:11px 0;border:none;font-size:14px;text-align:right;"><span style="color:#94a3b8;font-size:14px;margin-left:2px;">%</span></div>
+                            <button onClick="{{ c.onRemove }}" style="width:40px;height:40px;flex:none;border:1.5px solid #e2e8f0;border-radius:11px;background:#fff;color:#94a3b8;cursor:pointer;font-size:18px;" style-hover="border-color:#fecaca;color:#ef4444;background:#fef2f2;">×</button>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <button onClick="{{ addCriterio }}" style="margin-top:12px;padding:10px 15px;border:1.5px dashed #cbd5e1;border-radius:11px;background:#fff;color:#3b5bd9;font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="background:#f8fafc;border-color:#3b5bd9;">+ Adicionar competência</button>
+                      <div style="{{ somaStyle }}">Soma dos pesos: {{ somaPesos }}%</div>
+                    </div>
+                  </sc-if>
+
+                  <!-- STEP 2 CONFIG -->
+                  <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:grid;grid-template-columns:{{ dualCols }};gap:14px;">
+                      <div><label style="font-size:13px;font-weight:600;color:#334155;">Data de aplicação</label><input value="{{ fData }}" onChange="{{ onData }}" type="date" style="{{ selBase }}"></div>
+                      <div><label style="font-size:13px;font-weight:600;color:#334155;">Bimestre</label><select value="{{ fBim }}" onChange="{{ onBim }}" style="{{ selBase }}"><option>1º Bimestre</option><option>2º Bimestre</option><option>3º Bimestre</option><option>4º Bimestre</option></select></div>
+                      <div><label style="font-size:13px;font-weight:600;color:#334155;">Nota máxima</label><input value="{{ fNota }}" onChange="{{ onNota }}" style="{{ selBase }}"></div>
+                      <div><label style="font-size:13px;font-weight:600;color:#334155;">Recuperação</label><select style="{{ selBase }}"><option>Sim, permitir</option><option>Não</option></select></div>
+                    </div>
+                  </sc-if>
+
+                  <!-- STEP 3 REVIEW -->
+                  <sc-if value="{{ isStep3 }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:12px;">
+                      <div style="font-size:14px;color:#64748b;">Confira os dados antes de criar.</div>
+                      <div style="border:1px solid #eef2f7;border-radius:13px;overflow:hidden;">
+                        <sc-for list="{{ review }}" as="rv" hint-placeholder-count="4">
+                          <div style="display:flex;justify-content:space-between;gap:16px;padding:12px 16px;border-bottom:1px solid #f1f5f9;font-size:14px;"><span style="color:#94a3b8;">{{ rv.k }}</span><span style="font-weight:600;color:#1e293b;text-align:right;">{{ rv.v }}</span></div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+
+                <div style="padding:18px 26px;border-top:1px solid #eef2f7;display:flex;justify-content:space-between;">
+                  <button onClick="{{ prevStep }}" style="{{ backStyle }}">Voltar</button>
+                  <button onClick="{{ nextStep }}" style="padding:11px 22px;border:none;border-radius:11px;background:#3b5bd9;color:#fff;font-weight:700;font-size:14px;cursor:pointer;" style-hover="background:#2a45b8;">{{ nextLabel }}</button>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <!-- ===== DETAILS ===== -->
+        <sc-if value="{{ isDetails }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1120px;margin:0 auto;animation:fadeUp .4s ease;">
+            <div style="display:grid;grid-template-columns:{{ detailCols }};gap:16px;align-items:start;">
+              <!-- LEFT -->
+              <div style="display:flex;flex-direction:column;gap:16px;">
+                <div style="background:#fff;border:1px solid #e6ebf2;border-radius:16px;padding:22px;">
+                  <div style="display:flex;align-items:center;gap:14px;">
+                    <div style="width:56px;height:56px;border-radius:14px;background:#eef1fb;color:#3b5bd9;font-family:Space Grotesk;font-weight:700;font-size:20px;display:flex;align-items:center;justify-content:center;">7A</div>
+                    <div><div style="font-family:'Space Grotesk';font-weight:700;font-size:20px;color:#0f172a;">7º A · Matemática</div><div style="font-size:13.5px;color:#64748b;margin-top:2px;">Ensino Fundamental · Prof. Marina Reis</div></div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:20px;">
+                    <div style="background:#fafbfd;border:1px solid #eef2f7;border-radius:12px;padding:12px;text-align:center;"><div style="font-family:'Space Grotesk';font-weight:700;font-size:20px;color:#0f172a;">28</div><div style="font-size:12px;color:#94a3b8;">Alunos</div></div>
+                    <div style="background:#fafbfd;border:1px solid #eef2f7;border-radius:12px;padding:12px;text-align:center;"><div style="font-family:'Space Grotesk';font-weight:700;font-size:20px;color:#0f172a;">7,4</div><div style="font-size:12px;color:#94a3b8;">Média</div></div>
+                    <div style="background:#fafbfd;border:1px solid #eef2f7;border-radius:12px;padding:12px;text-align:center;"><div style="font-family:'Space Grotesk';font-weight:700;font-size:20px;color:#0f172a;">92%</div><div style="font-size:12px;color:#94a3b8;">Frequência</div></div>
+                  </div>
+                </div>
+                <div style="background:#fff;border:1px solid #e6ebf2;border-radius:16px;padding:20px;">
+                  <div style="font-weight:700;font-size:15px;color:#0f172a;margin-bottom:14px;">Alunos em atenção</div>
+                  <div style="display:flex;flex-direction:column;gap:11px;">
+                    <sc-for list="{{ atencao }}" as="a" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;gap:11px;">
+                        <div style="width:34px;height:34px;border-radius:50%;background:#fef2f2;color:#ef4444;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">{{ a.ini }}</div>
+                        <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:#1e293b;">{{ a.nome }}</div><div style="font-size:12px;color:#94a3b8;">{{ a.motivo }}</div></div>
+                        <div style="font-weight:700;font-size:14px;color:#ef4444;">{{ a.media }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+              <!-- RIGHT: TIMELINE -->
+              <div style="background:#fff;border:1px solid #e6ebf2;border-radius:16px;padding:22px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+                  <div style="font-weight:700;font-size:15px;color:#0f172a;">Linha do tempo</div>
+                  <a href="One%20-%20Avaliacao%20Iterativa.dc.html" style="font-size:13px;font-weight:600;">Resumo com a One →</a>
+                </div>
+                <div style="position:relative;padding-left:26px;">
+                  <div style="position:absolute;left:9px;top:4px;bottom:4px;width:2px;background:#eef2f7;"></div>
+                  <sc-for list="{{ timeline }}" as="e" hint-placeholder-count="5">
+                    <div style="position:relative;padding-bottom:22px;">
+                      <div style="position:absolute;left:-26px;top:1px;width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid {{ e.color }};display:flex;align-items:center;justify-content:center;"><span style="width:7px;height:7px;border-radius:50%;background:{{ e.color }};"></span></div>
+                      <div style="font-size:14px;font-weight:600;color:#1e293b;">{{ e.titulo }}</div>
+                      <div style="font-size:13px;color:#64748b;margin-top:2px;line-height:1.5;">{{ e.desc }}</div>
+                      <div style="font-size:12px;color:#a2a9ba;margin-top:4px;">{{ e.quando }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.state = {
+      screen: 'login',            // login | dashboard | create | details
+      narrow: (typeof window !== 'undefined' ? window.innerWidth : 1200) < 900,
+      sidebarOpen: false,
+      email: '', senha: '', loginErr: {},
+      search: '', actPage: 0,
+      step: 0, created: false,
+      form: { titulo:'', turma:'', disc:'Matemática', tipo:'Prova', data:'', bim:'1º Bimestre', nota:'10' },
+      criterios: [ { nome:'Prova escrita', peso:'50' }, { nome:'Trabalho em grupo', peso:'30' }, { nome:'Participação', peso:'20' } ],
+      formErr: {}
+    };
+    this._onResize = () => {
+      const n = window.innerWidth < 900;
+      if (n !== this.state.narrow) this.setState({ narrow: n, sidebarOpen: false });
+    };
+  }
+  componentDidMount(){ window.addEventListener('resize', this._onResize); }
+  componentWillUnmount(){ window.removeEventListener('resize', this._onResize); }
+
+  go(screen){ this.setState({ screen, sidebarOpen: false }); }
+
+  doLogin(){
+    const e = {};
+    if (!/.+@.+\..+/.test(this.state.email)) e.email = 'Informe um e-mail válido.';
+    if (this.state.senha.length < 1) e.senha = 'Informe sua senha.';
+    this.setState({ loginErr: e });
+    if (Object.keys(e).length === 0) this.go('dashboard');
+  }
+
+  setForm(k, v){ this.setState(st => ({ form: { ...st.form, [k]: v } })); }
+
+  validateStep(step){
+    const e = {};
+    if (step === 0){
+      if (!this.state.form.titulo.trim()) e.titulo = 'Dê um título à avaliação.';
+      if (!this.state.form.turma) e.turma = 'Selecione a turma.';
+    }
+    return e;
+  }
+  nextStep(){
+    const e = this.validateStep(this.state.step);
+    this.setState({ formErr: e });
+    if (Object.keys(e).length) return;
+    if (this.state.step >= 3){ this.setState({ created: true }); return; }
+    this.setState(st => ({ step: st.step + 1 }));
+  }
+  prevStep(){
+    if (this.state.step === 0){ this.go('dashboard'); return; }
+    this.setState(st => ({ step: st.step - 1, formErr: {} }));
+  }
+  resetCreate(){ this.setState({ created:false, step:0, form:{ titulo:'', turma:'', disc:'Matemática', tipo:'Prova', data:'', bim:'1º Bimestre', nota:'10' }, formErr:{} }); }
+
+  setCrit(i, k, v){ this.setState(st => { const c = st.criterios.slice(); c[i] = { ...c[i], [k]: v }; return { criterios: c }; }); }
+  addCrit(){ this.setState(st => ({ criterios: [...st.criterios, { nome:'', peso:'0' }] })); }
+  rmCrit(i){ this.setState(st => ({ criterios: st.criterios.filter((_, j) => j !== i) })); }
+
+  renderVals(){
+    const S = this.state, F = S.form;
+    const screen = S.screen;
+    const isLogin = screen === 'login';
+    const isApp = !isLogin;
+    const narrow = S.narrow, wide = !narrow;
+
+    // ---- inputs (login) ----
+    const inBase = 'width:100%;margin-top:7px;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14.5px;background:#fff;transition:border .15s;';
+    const inErr = 'width:100%;margin-top:7px;padding:12px 14px;border:1.5px solid #ef4444;border-radius:12px;font-size:14.5px;background:#fef2f2;';
+
+    // ---- nav styles ----
+    const navA = 'display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:11px;font-weight:600;font-size:14px;cursor:pointer;background:#eef1fb;color:#3b5bd9;';
+    const navI = 'display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:11px;font-weight:600;font-size:14px;cursor:pointer;background:transparent;color:#64748b;';
+    const nv = (on) => on ? navA : navI;
+
+    // ---- sidebar (drawer on narrow) ----
+    const sbBase = 'width:256px;flex:none;background:#fff;border-right:1px solid #e6ebf2;padding:22px 16px;display:flex;flex-direction:column;';
+    const sidebarStyle = narrow
+      ? sbBase + 'position:fixed;top:0;left:0;bottom:0;z-index:50;transition:transform .25s ease;box-shadow:0 20px 50px rgba(15,23,42,.2);transform:translateX(' + (S.sidebarOpen ? '0' : '-110%') + ');'
+      : sbBase;
+
+    // ---- metrics ----
+    const metrics = [
+      { label:'Turmas ativas', value:'8', delta:'+2', up:true, glyph:'T', iconBg:'#eef1fb', iconFg:'#3b5bd9' },
+      { label:'Alunos', value:'243', delta:'+18', up:true, glyph:'A', iconBg:'#ecfeff', iconFg:'#0891b2' },
+      { label:'Média geral', value:'7,4', delta:'+0,3', up:true, glyph:'M', iconBg:'#ecfdf5', iconFg:'#10b981' },
+      { label:'Avaliações no mês', value:'19', delta:'-4', up:false, glyph:'V', iconBg:'#fef3c7', iconFg:'#d97706' }
+    ].map(m => ({ ...m,
+      delta: m.delta,
+      deltaStyle: 'font-size:12px;font-weight:700;padding:3px 8px;border-radius:20px;' + (m.up ? 'background:#ecfdf5;color:#10b981;' : 'background:#fef2f2;color:#ef4444;')
+    }));
+
+    // ---- bar chart ----
+    const raw = [ ['6ºA',7.2], ['7ºA',7.4], ['7ºB',6.1], ['8ºA',8.3], ['9ºA',6.8], ['9ºB',7.9] ];
+    const barData = raw.map(([nome,val]) => ({ nome, val: String(val).replace('.',','), h: Math.round((val/10)*100)+'%', color: val < 7 ? '#f59e0b' : '#3b5bd9' }));
+
+    // ---- donut ----
+    const donut = 'conic-gradient(#10b981 0 62%, #f59e0b 62% 84%, #ef4444 84% 100%)';
+    const donutLegend = [ { color:'#10b981', label:'Acima da média', pct:'62%' }, { color:'#f59e0b', label:'Em atenção', pct:'22%' }, { color:'#ef4444', label:'Abaixo', pct:'16%' } ];
+
+    // ---- activities ----
+    const acts = [
+      ['Ana Beatriz','Nota lançada · P1','Hoje, 09:12','concluido'],
+      ['7º B · Matemática','Boletim gerado','Hoje, 08:40','concluido'],
+      ['Diego Alves','Frequência abaixo de 75%','Ontem','atrasado'],
+      ['Bruno Lima','Nota pendente · Trabalho','Ontem','pendente'],
+      ['8º A · Matemática','Resumo da One solicitado','Ontem','concluido'],
+      ['Carla Souza','Recuperação agendada','2 dias','pendente'],
+      ['9º A · Matemática','Planilha importada (28 notas)','2 dias','concluido'],
+      ['Eduarda Martins','Observação de boletim gerada','3 dias','concluido'],
+      ['6º A · Matemática','Avaliação criada','3 dias','concluido'],
+      ['Felipe Rocha','Nota abaixo da média','4 dias','atrasado'],
+      ['7º A · Matemática','Frequência lançada','5 dias','concluido'],
+      ['Gabriela Nunes','Nota pendente · P2','5 dias','pendente']
+    ];
+    const q = S.search.trim().toLowerCase();
+    const filtered = acts.filter(a => !q || (a[0]+' '+a[1]).toLowerCase().includes(q));
+    const PER = 5;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PER));
+    const page = Math.min(S.actPage, totalPages - 1);
+    const stMap = {
+      concluido: 'font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;background:#ecfdf5;color:#10b981;',
+      pendente: 'font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;background:#fef3c7;color:#d97706;',
+      atrasado: 'font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;background:#fef2f2;color:#ef4444;'
+    };
+    const stLbl = { concluido:'Concluído', pendente:'Pendente', atrasado:'Atrasado' };
+    const avPal = [ ['#eef1fb','#3b5bd9'], ['#ecfeff','#0891b2'], ['#fef2f2','#ef4444'], ['#fef3c7','#d97706'], ['#ecfdf5','#10b981'] ];
+    const pageRows = filtered.slice(page*PER, page*PER+PER).map((a, i) => {
+      const pal = avPal[(page*PER+i) % avPal.length];
+      const ini = a[0].split('·')[0].trim().split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+      return { who:a[0], acao:a[1], data:a[2], status: stLbl[a[3]], statusStyle: stMap[a[3]], ini, avBg:pal[0], avFg:pal[1] };
+    });
+    const pbtn = (dis) => 'padding:8px 15px;border:1px solid #e2e8f0;border-radius:10px;font-weight:600;font-size:13px;background:#fff;' + (dis ? 'color:#cbd5e1;cursor:default;' : 'color:#334155;cursor:pointer;');
+
+    // ---- stepper ----
+    const names = ['Informações','Critérios','Configuração','Revisão'];
+    const stepper = names.map((name, i) => {
+      const done = i < S.step, active = i === S.step;
+      return {
+        name, num: done ? '✓' : String(i+1),
+        showLabel: wide, flex: (i < names.length-1) ? 'flex:1;' : '',
+        line: i < names.length-1, lineColor: i < S.step ? '#3b5bd9' : '#e2e8f0',
+        badge: 'width:30px;height:30px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;font-family:Space Grotesk;' +
+          (done ? 'background:#3b5bd9;color:#fff;' : active ? 'background:#3b5bd9;color:#fff;box-shadow:0 0 0 4px #dbe4fb;' : 'background:#f1f5f9;color:#94a3b8;'),
+        label: 'font-size:13.5px;font-weight:' + (active?'700':'600') + ';color:' + (active?'#0f172a':done?'#475569':'#94a3b8') + ';white-space:nowrap;'
+      };
+    });
+
+    // tipos chips
+    const tipos = ['Prova','Trabalho','Diagnóstica','Projeto'].map(t => ({
+      label: t, onClick: () => this.setForm('tipo', t),
+      style: 'padding:9px 15px;border-radius:20px;font-size:13.5px;font-weight:600;cursor:pointer;border:1.5px solid ' + (F.tipo===t ? '#3b5bd9;background:#eef1fb;color:#3b5bd9;' : '#e2e8f0;background:#fff;color:#64748b;')
+    }));
+
+    const criterios = S.criterios.map((c, i) => ({
+      nome: c.nome, peso: c.peso,
+      onNome: (e) => this.setCrit(i,'nome',e.target.value),
+      onPeso: (e) => this.setCrit(i,'peso',e.target.value.replace(/[^0-9]/g,'')),
+      onRemove: () => this.rmCrit(i)
+    }));
+    const soma = S.criterios.reduce((s,c) => s + (parseInt(c.peso,10)||0), 0);
+    const somaOk = soma === 100;
+
+    const review = [
+      { k:'Título', v: F.titulo || '—' },
+      { k:'Turma', v: F.turma || '—' },
+      { k:'Disciplina', v: F.disc },
+      { k:'Tipo', v: F.tipo },
+      { k:'Competências', v: S.criterios.length + ' · soma ' + soma + '%' },
+      { k:'Bimestre', v: F.bim },
+      { k:'Nota máxima', v: F.nota }
+    ];
+
+    const selBase = 'width:100%;margin-top:7px;padding:12px 13px;border:1.5px solid #e2e8f0;border-radius:11px;font-size:14px;background:#fff;color:#0f172a;';
+
+    // ---- details data ----
+    const atencao = [
+      { ini:'DA', nome:'Diego Alves', motivo:'Média 5,1 · 2 faltas', media:'5,1' },
+      { ini:'FR', nome:'Felipe Rocha', motivo:'Média 5,8 · trabalho pendente', media:'5,8' },
+      { ini:'LM', nome:'Lucas Menezes', motivo:'Frequência 71%', media:'6,2' }
+    ];
+    const timeline = [
+      { color:'#3b5bd9', titulo:'Notas da P1 lançadas', desc:'28 alunos · média 7,4 na avaliação.', quando:'Hoje, 09:12' },
+      { color:'#10b981', titulo:'Boletim do bimestre gerado', desc:'PDF exportado para 28 alunos.', quando:'Ontem' },
+      { color:'#6366f1', titulo:'Resumo pedagógico da One', desc:'Turma evoluiu 0,3 na média frente ao mês anterior.', quando:'2 dias' },
+      { color:'#f59e0b', titulo:'Recuperação agendada', desc:'Carla Souza · conteúdo de frações.', quando:'3 dias' },
+      { color:'#0891b2', titulo:'Turma criada', desc:'7º A · Matemática · 28 alunos matriculados.', quando:'12 mar' }
+    ];
+
+    return {
+      isLogin, isApp, wide, narrow,
+      // login
+      email:S.email, senha:S.senha,
+      emailStyle: S.loginErr.email ? inErr : inBase,
+      senhaStyle: S.loginErr.senha ? inErr : inBase,
+      emailErr: S.loginErr.email || '', senhaErr: S.loginErr.senha || '',
+      onEmail:(e)=>this.setState({email:e.target.value}),
+      onSenha:(e)=>this.setState({senha:e.target.value}),
+      onLogin:()=>this.doLogin(),
+      onForgot:(e)=>{ e.preventDefault(); },
+      goLogin:()=>this.go('login'),
+      // shell
+      sidebarStyle, showScrim: narrow && S.sidebarOpen,
+      openSidebar:()=>this.setState({sidebarOpen:true}),
+      closeSidebar:()=>this.setState({sidebarOpen:false}),
+      goDashboard:()=>this.go('dashboard'),
+      goCreate:()=>{ this.resetCreate(); this.go('create'); },
+      goDetails:()=>this.go('details'),
+      navDash: nv(screen==='dashboard'), navTurmas: nv(screen==='details'),
+      navAval: nv(screen==='create'), navAlunos: nv(false), navRel: nv(false),
+      pageTitle: screen==='dashboard'?'Dashboard':screen==='create'?'Nova avaliação':screen==='details'?'7º A · Matemática':'AvaliaSmart',
+      showSearch: screen==='dashboard',
+      search:S.search, onSearch:(e)=>this.setState({search:e.target.value, actPage:0}),
+      // screens
+      isDashboard: screen==='dashboard', isCreate: screen==='create', isDetails: screen==='details',
+      // dashboard
+      metrics, barData, donut, donutLegend, pageRows,
+      metricCols: narrow ? '1fr 1fr' : 'repeat(4,1fr)',
+      chartCols: narrow ? '1fr' : '1.6fr 1fr',
+      detailCols: narrow ? '1fr' : '1fr 1.15fr',
+      dualCols: narrow ? '1fr' : '1fr 1fr',
+      actCount: filtered.length,
+      pageLabel: 'Página ' + (page+1) + ' de ' + totalPages,
+      prevStyle: pbtn(page<=0), nextStyle: pbtn(page>=totalPages-1),
+      prevPage:()=>this.setState(st=>({actPage:Math.max(0,Math.min(st.actPage,totalPages-1)-1)})),
+      nextPage:()=>this.setState(st=>({actPage:Math.min(totalPages-1,st.actPage+1)})),
+      // create
+      created:S.created, notCreated:!S.created, stepper,
+      isStep0:S.step===0, isStep1:S.step===1, isStep2:S.step===2, isStep3:S.step===3,
+      fTitulo:F.titulo, fTurma:F.turma, fDisc:F.disc, fData:F.data, fBim:F.bim, fNota:F.nota,
+      onTitulo:(e)=>this.setForm('titulo',e.target.value),
+      onTurma:(e)=>this.setForm('turma',e.target.value),
+      onDisc:(e)=>this.setForm('disc',e.target.value),
+      onData:(e)=>this.setForm('data',e.target.value),
+      onBim:(e)=>this.setForm('bim',e.target.value),
+      onNota:(e)=>this.setForm('nota',e.target.value.replace(/[^0-9]/g,'')),
+      tituloStyle: (S.formErr.titulo ? inErr : inBase),
+      turmaStyle: (S.formErr.turma ? inErr.replace('12px 14px','12px 13px') : selBase),
+      selBase,
+      errTitulo:S.formErr.titulo||'', errTurma:S.formErr.turma||'',
+      tipos, criterios, addCriterio:()=>this.addCrit(),
+      somaPesos: soma,
+      somaStyle: 'margin-top:14px;font-size:13px;font-weight:700;padding:9px 13px;border-radius:10px;' + (somaOk?'background:#ecfdf5;color:#10b981;':'background:#fef3c7;color:#d97706;'),
+      review,
+      backStyle:'padding:11px 20px;border:1px solid #e2e8f0;border-radius:11px;background:#fff;color:#334155;font-weight:600;font-size:14px;cursor:pointer;',
+      nextLabel: S.step>=3 ? 'Criar avaliação' : 'Continuar',
+      nextStep:()=>this.nextStep(), prevStep:()=>this.prevStep(), resetCreate:()=>this.resetCreate(),
+      fTituloReset:F.titulo,
+      // details
+      atencao, timeline
+    };
+  }
+}
+</script>
+</body>
+</html>

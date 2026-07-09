@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Subscription" ADD COLUMN     "ocrPeriodStart" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN     "ocrUsedThisPeriod" INTEGER NOT NULL DEFAULT 0;

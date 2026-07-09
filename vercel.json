@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/check-expiring-subscriptions",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/check-consecutive-absences",
+      "schedule": "0 9 * * *"
+    }
+  ]
+}
