@@ -55,7 +55,7 @@ export default async function ImportarPage({ searchParams }: PageProps) {
           Importar notas — {classSubject.subject.name} · {classSubject.class.name}
         </h1>
         <p className="text-sm text-[var(--color-foreground-muted)]">
-          Envie uma planilha (.xlsx, .csv ou .ods) com os alunos e notas dessa turma.
+          Envie uma planilha (.xlsx ou .csv) com os alunos e notas dessa turma.
         </p>
       </div>
 

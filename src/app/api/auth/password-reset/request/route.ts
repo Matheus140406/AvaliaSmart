@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail, passwordResetEmail } from "@/lib/email/resend";
 import { withErrorHandling } from "@/lib/http/error-handler";
 import { apiSuccess } from "@/lib/http/api-response";
-import { badRequest } from "@/lib/http/errors";
+import { badRequest, HttpError } from "@/lib/http/errors";
+import { consumeRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 
 /**
  * POST /api/auth/password-reset/request
@@ -31,6 +32,19 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   const parsed = requestSchema.safeParse(body);
   if (!parsed.success) {
     throw badRequest("E-mail inválido.");
+  }
+
+  // Cada chamada com conta existente dispara um e-mail real (Resend) — sem
+  // freio, isso é bombardeio de caixa de entrada da vítima + consumo da
+  // nossa cota. Limita por IP e por e-mail-alvo; o 429 não vaza se a conta
+  // existe (dispara igual pra e-mail com e sem conta).
+  const ip = clientIpFromHeaders(request.headers);
+  const [ipAllowed, emailAllowed] = await Promise.all([
+    consumeRateLimit(`pwreset:ip:${ip}`, 10, 60 * 60 * 1000),
+    consumeRateLimit(`pwreset:email:${parsed.data.email}`, 3, 60 * 60 * 1000),
+  ]);
+  if (!ipAllowed || !emailAllowed) {
+    throw new HttpError(429, "Muitos pedidos de redefinição. Tente novamente em uma hora.");
   }
 
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });

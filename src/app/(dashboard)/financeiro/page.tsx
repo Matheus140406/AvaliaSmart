@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { isPlatformAdmin } from "@/lib/platform-admin";
+import { isVerifiedPlatformAdmin } from "@/lib/platform-admin";
 import { listTenantsBillingStatus } from "@/services/platform-billing.service";
 
 /**
@@ -12,7 +12,7 @@ import { listTenantsBillingStatus } from "@/services/platform-billing.service";
  */
 export default async function FinanceiroPage() {
   const session = await auth();
-  if (!isPlatformAdmin(session?.user?.email)) notFound();
+  if (!(await isVerifiedPlatformAdmin(session?.user?.email))) notFound();
 
   const rows = await listTenantsBillingStatus();
   const adimplentes = rows.filter((r) => r.adimplente).length;

@@ -2,7 +2,7 @@
 
 /**
  * Fluxo de import em 3 passos, como pedido no briefing:
- *   1. Upload — parse .xlsx/.csv/.ods no client (nenhum round-trip só pra ler o arquivo)
+ *   1. Upload — parse .xlsx/.csv no client (nenhum round-trip só pra ler o arquivo)
  *   2. Mapeamento — "Coluna A do Excel -> Nome do Aluno" etc., com um palpite automático
  *   3. Revisão — relatório de validação (células vazias, notas em formato inválido)
  *      antes de qualquer escrita no banco; só then o POST pro /api/import/commit acontece.
@@ -267,7 +267,7 @@ function UploadStep({
             Baixe o modelo já com as colunas certas pra essa turma/período, com um exemplo preenchido.
           </p>
         </div>
-        <Button type="button" variant="secondary" onClick={() => generateImportTemplate(context)} className="shrink-0 gap-1.5">
+        <Button type="button" variant="secondary" onClick={() => generateImportTemplate(context).catch(console.error)} className="shrink-0 gap-1.5">
           <Download size={14} /> Baixar modelo
         </Button>
       </div>
@@ -284,7 +284,7 @@ function UploadStep({
         style={{ borderColor: dragging ? "var(--color-brand)" : "var(--color-border)" }}
       >
         <p className="text-sm font-medium text-[var(--color-foreground)]">Arraste a planilha aqui</p>
-        <p className="text-xs text-[var(--color-foreground-muted)]">.xlsx, .csv ou .ods — ou clique para escolher</p>
+        <p className="text-xs text-[var(--color-foreground-muted)]">.xlsx ou .csv — ou clique para escolher</p>
         {/*
           `motion.label` (não `<Button>`): precisa continuar sendo um
           `<label>` de verdade envolvendo o `<input type="file">` escondido
@@ -301,7 +301,7 @@ function UploadStep({
           className="mt-2 cursor-pointer rounded-md bg-brand px-4 py-2 text-sm font-medium text-white"
         >
           Escolher arquivo
-          <input type="file" accept=".xlsx,.xls,.csv,.ods" className="hidden" onChange={handleInputChange} />
+          <input type="file" accept=".xlsx,.csv" className="hidden" onChange={handleInputChange} />
         </motion.label>
       </div>
 

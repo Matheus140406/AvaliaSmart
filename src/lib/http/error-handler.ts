@@ -1,4 +1,5 @@
 import type { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { apiError } from "./api-response";
 import { HttpError } from "./errors";
 
@@ -24,6 +25,7 @@ export function withErrorHandling(
       }
       // eslint-disable-next-line no-console
       console.error(`[unhandled] ${request.method} ${request.nextUrl.pathname}:`, err);
+      Sentry.captureException(err);
       return apiError("Erro interno. Tente novamente em instantes.", 500);
     }
   };

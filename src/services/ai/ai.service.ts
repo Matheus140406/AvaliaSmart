@@ -100,6 +100,19 @@ export type GenerateResult<T> = GenerateSuccess<T> | GenerateFailure;
 
 type ProviderName = "gemini" | "openai" | "anthropic";
 
+/**
+ * Log de roteamento/latência da IA — barulhento demais pra rodar em toda
+ * request de produção; liga com AI_DEBUG=1 quando precisar investigar o
+ * fallback. `console.warn`/`console.error` (erros reais) continuam sempre
+ * ativos.
+ */
+function aiDebug(message: string): void {
+  if (process.env.AI_DEBUG === "1") {
+    // eslint-disable-next-line no-console
+    console.log(message);
+  }
+}
+
 const PROVIDER_ORDER: ProviderName[] = ["gemini", "openai", "anthropic"];
 
 const circuitBreakers: Record<ProviderName, { blockedUntil: number }> = {
@@ -240,7 +253,7 @@ export async function generate<T>(
 
   for (const provider of PROVIDER_ORDER) {
     if (!isProviderAvailable(provider)) {
-      console.log(`[AI-ROUTING] Pulando ${provider.toUpperCase()} (circuit breaker ativo).`);
+      aiDebug(`[AI-ROUTING] Pulando ${provider.toUpperCase()} (circuit breaker ativo).`);
       anyProviderBlocked = true;
       continue;
     }
@@ -261,12 +274,12 @@ export async function generate<T>(
 
     anyProviderTried = true;
     try {
-      console.log(`[AI-TRY] Tentando chamada via ${provider.toUpperCase()}...`);
+      aiDebug(`[AI-TRY] Tentando chamada via ${provider.toUpperCase()}...`);
       const start = Date.now();
       const result = await attempt(model, params, maxOutputTokens, providerOptions);
       const duration = Date.now() - start;
       const usage = result.success ? result.usage : undefined;
-      console.log(
+      aiDebug(
         `[AI-SUCCESS] Provider: ${provider.toUpperCase()} | Duração: ${duration}ms | Tokens: ${usage ? usage.inputTokens + usage.outputTokens : "N/A"}`
       );
       return result;

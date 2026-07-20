@@ -5,6 +5,7 @@ import { parseExternalReference } from "@/lib/billing/external-reference";
 import { withWebhookIdempotency } from "@/lib/billing/webhook-idempotency";
 import { sendEmail, paymentReceivedEmail } from "@/lib/email/resend";
 import { renderReceiptPdf } from "@/services/billing/receipt.service";
+import { timingSafeStringEqual } from "@/lib/billing/timing-safe";
 
 /**
  * POST /api/billing/webhook — recebe eventos de COBRANÇA do Asaas.
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
   const expectedToken = process.env.ASAAS_WEBHOOK_TOKEN;
   if (expectedToken) {
     const receivedToken = request.headers.get("asaas-access-token");
-    if (receivedToken !== expectedToken) {
+    if (!receivedToken || !timingSafeStringEqual(receivedToken, expectedToken)) {
       return NextResponse.json({ success: false, error: "Token inválido." }, { status: 401 });
     }
   } else if (process.env.NODE_ENV === "production") {
@@ -81,6 +82,17 @@ export async function POST(request: NextRequest) {
               trialEndsAt: null,
               currentPeriodEnd: validUntil,
               ...(typeof payment.subscription === "string" ? { externalId: payment.subscription } : {}),
+            },
+          });
+          // Mudança de plano/status via webhook roda FORA do contexto de
+          // tenant (sem sessão), então a extension de audit não cobre —
+          // registro manual, ator "sistema" (membershipId null).
+          await tx.auditLog.create({
+            data: {
+              tenantId: parsed.tenantId,
+              action: "UPDATE",
+              model: "Subscription",
+              newValue: { source: "asaas-webhook", event: eventType, tier: parsed.tier, status: "ATIVA" },
             },
           });
           if (!plan) {
@@ -134,6 +146,14 @@ export async function POST(request: NextRequest) {
           await tx.subscription.updateMany({
             where: { tenantId: parsed.tenantId, status: "ATIVA", tier: { not: "TESTE_GRATIS" } },
             data: { status: "INADIMPLENTE" },
+          });
+          await tx.auditLog.create({
+            data: {
+              tenantId: parsed.tenantId,
+              action: "UPDATE",
+              model: "Subscription",
+              newValue: { source: "asaas-webhook", event: eventType, status: "INADIMPLENTE" },
+            },
           });
         });
         break;

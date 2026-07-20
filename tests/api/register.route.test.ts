@@ -3,12 +3,18 @@ import { NextRequest } from "next/server";
 
 const userFindUnique = vi.fn();
 const userCreate = vi.fn();
+const rateLimitCount = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: {
       findUnique: (...args: unknown[]) => userFindUnique(...args),
       create: (...args: unknown[]) => userCreate(...args),
+    },
+    rateLimitEvent: {
+      count: (...args: unknown[]) => rateLimitCount(...args),
+      create: vi.fn().mockResolvedValue({}),
+      deleteMany: vi.fn(),
     },
   },
 }));
@@ -25,6 +31,7 @@ function registerRequest(body: unknown): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  rateLimitCount.mockResolvedValue(0); // abaixo do limite por default
 });
 
 describe("POST /api/auth/register", () => {
@@ -57,6 +64,29 @@ describe("POST /api/auth/register", () => {
       new NextRequest("http://localhost/api/auth/register", { method: "POST", body: "não é json" })
     );
     expect(res.status).toBe(400);
+  });
+
+  it("devolve 429 quando o IP estoura o limite de cadastros", async () => {
+    rateLimitCount.mockResolvedValue(5); // no limite de 5/h
+    const res = await POST(registerRequest({ name: "Ana", email: "a@b.com", password: "senha123" }));
+    expect(res.status).toBe(429);
+    expect(userCreate).not.toHaveBeenCalled();
+  });
+
+  it("bloqueia cadastro de e-mail do allowlist de platform admin com a MESMA mensagem de conta existente", async () => {
+    process.env.PLATFORM_ADMIN_EMAILS = "dono@avaliasmart.com";
+    try {
+      const res = await POST(
+        registerRequest({ name: "Atacante", email: "Dono@AvaliaSmart.com", password: "senha123" })
+      );
+      expect(res.status).toBe(409);
+      const body = await res.json();
+      // Indistinguível do caso "já existe" — o allowlist não pode ser sondável.
+      expect(body.error).toBe("Já existe uma conta com esse e-mail. Tente entrar.");
+      expect(userCreate).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.PLATFORM_ADMIN_EMAILS;
+    }
   });
 
   it("devolve 409 com mensagem neutra quando o e-mail já existe", async () => {

@@ -57,6 +57,16 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
       where: { id: resetToken.userId },
       data: { passwordHash },
     }),
+    // Troca de senha é evento de segurança — audita o FATO, nunca o hash.
+    // Rota pública (sem tenant/membership): fica só o userId no registro.
+    prisma.auditLog.create({
+      data: {
+        action: "UPDATE",
+        model: "User",
+        recordId: resetToken.userId,
+        newValue: { source: "password-reset", passwordReset: true },
+      },
+    }),
   ]);
 
   return apiSuccess({ success: true });
