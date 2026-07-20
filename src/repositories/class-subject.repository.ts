@@ -10,6 +10,6 @@ import { prisma } from "@/lib/prisma";
 export function findClassSubjectWithClass(classSubjectId: string) {
   return prisma.classSubject.findUnique({
     where: { id: classSubjectId },
-    include: { class: true },
+    include: { class: true, subject: true },
   });
 }

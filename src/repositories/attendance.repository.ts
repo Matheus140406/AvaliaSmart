@@ -38,6 +38,18 @@ export function upsertAttendance(params: UpsertAttendanceParams) {
   });
 }
 
+/** Matrículas ativas de uma turma + toda Attendance lançada no intervalo [startDate, endDate] — usado pelo export em PDF da lista de chamada do mês. */
+export function findMonthlyAttendance(classId: string, classSubjectId: string, startDate: Date, endDate: Date) {
+  return prisma.enrollment.findMany({
+    where: { classId, status: "ATIVA" },
+    include: {
+      student: true,
+      attendances: { where: { classSubjectId, date: { gte: startDate, lte: endDate } }, orderBy: { date: "asc" } },
+    },
+    orderBy: { student: { name: "asc" } },
+  });
+}
+
 /**
  * Janela recente de chamada (todas as matrículas ativas, todos os
  * tenants) — usada pelo job de faltas consecutivas. `sinceDate` limita o
