@@ -9,16 +9,25 @@ import { badRequest, notFound } from "@/lib/http/errors";
  * não um link permanente; multi-uso dentro da janela (não apaga no
  * primeiro acesso) porque quem recebe no WhatsApp pode abrir mais de uma
  * vez em poucos minutos sem que isso seja um problema de segurança real.
+ *
+ * `boletim-portal` é a EXCEÇÃO de propósito: um link de boletim pensado pra
+ * o responsável salvar/revisitar (não um compartilhamento pontual), então
+ * precisa durar mais — 90 dias em vez de 15 minutos. Mesma infraestrutura
+ * (token de 192 bits, mesma rota pública de download), só o TTL muda.
  */
-const EXPORT_SHARE_LINK_TTL_MS = 15 * 60 * 1000;
+const DEFAULT_SHARE_LINK_TTL_MS = 15 * 60 * 1000;
+const KIND_TTL_MS: Partial<Record<ExportShareLinkKind, number>> = {
+  "boletim-portal": 90 * 24 * 60 * 60 * 1000,
+};
 
-export type ExportShareLinkKind = "dashboard-pdf" | "dashboard-excel" | "boletim-pdf" | "receipt-pdf";
+export type ExportShareLinkKind = "dashboard-pdf" | "dashboard-excel" | "boletim-pdf" | "receipt-pdf" | "boletim-portal";
 
 const KIND_REQUIRED_PARAMS: Record<ExportShareLinkKind, string[]> = {
   "dashboard-pdf": [],
   "dashboard-excel": [],
   "boletim-pdf": ["enrollmentId"],
   "receipt-pdf": ["receiptId"],
+  "boletim-portal": ["enrollmentId"],
 };
 
 export async function createExportShareLink(
@@ -32,7 +41,7 @@ export async function createExportShareLink(
   }
 
   const token = crypto.randomBytes(24).toString("base64url");
-  const expiresAt = new Date(Date.now() + EXPORT_SHARE_LINK_TTL_MS);
+  const expiresAt = new Date(Date.now() + (KIND_TTL_MS[kind] ?? DEFAULT_SHARE_LINK_TTL_MS));
 
   await prisma.exportShareLink.create({
     data: { token, tenantId, kind, params, expiresAt },

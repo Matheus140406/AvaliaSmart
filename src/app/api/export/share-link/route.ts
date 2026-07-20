@@ -12,7 +12,7 @@ import { createExportShareLink } from "@/services/export/share-link.service";
  * não dá pra colar a URL delas cruas num link de WhatsApp).
  */
 const bodySchema = z.object({
-  kind: z.enum(["dashboard-pdf", "dashboard-excel", "boletim-pdf", "receipt-pdf"]),
+  kind: z.enum(["dashboard-pdf", "dashboard-excel", "boletim-pdf", "receipt-pdf", "boletim-portal"]),
   params: z.record(z.string(), z.string()).default({}),
 });
 

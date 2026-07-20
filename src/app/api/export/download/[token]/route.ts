@@ -42,7 +42,8 @@ export const GET = async (_request: NextRequest, context: RouteContext): Promise
           },
         });
       }
-      case "boletim-pdf": {
+      case "boletim-pdf":
+      case "boletim-portal": {
         const enrollmentId = link.params.enrollmentId;
         if (!enrollmentId) throw badRequest("Link de boletim sem enrollmentId.");
         const { buffer, studentName } = await buildBoletimPdfBuffer(link.tenantId, enrollmentId);
