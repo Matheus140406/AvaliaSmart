@@ -783,6 +783,7 @@ enum AiFeature {
   CORRECAO_REDACAO
   ACESSIBILIDADE
   DESCRICAO_IMAGEM
+  PREDICAO_RISCO
 }
 
 /// Uma linha por chamada de IA (sucesso ou falha) — serve DOIS propósitos ao
@@ -979,4 +980,22 @@ model PaymentReceipt {
 
   @@unique([gateway, externalPaymentId])
   @@index([tenantId, createdAt])
+}
+
+// -------------------------------------------------------------------------------------
+// RATE LIMITING (rotas de autenticação)
+// -------------------------------------------------------------------------------------
+
+/// Janela deslizante persistida em banco — mesmo racional do teto de IA em
+/// services/ai/guard.ts: em serverless (Vercel) cada instância tem memória
+/// própria, então contador em memória não limita nada; o banco é o único
+/// estado compartilhado que já existe (sem Redis novo). Uma linha por
+/// tentativa; `key` codifica escopo+identidade (ex.: "login:ip:1.2.3.4").
+/// Linhas com mais de 24h são varridas pelo cron diário.
+model RateLimitEvent {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
 }

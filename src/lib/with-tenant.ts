@@ -1,4 +1,5 @@
 import type { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { getCurrentUser, type SessionUser } from "@/lib/auth";
 import { runWithTenantContext } from "@/lib/tenant-context";
 import { apiError } from "@/lib/http/api-response";
@@ -56,6 +57,9 @@ export function withTenant<Context = unknown>(
       }
       // eslint-disable-next-line no-console
       console.error(`[unhandled] ${request.method} ${request.nextUrl.pathname}:`, err);
+      // Só erro de verdade (bug, falha do Prisma) vai pro Sentry — HttpError
+      // é fluxo de negócio esperado (403, 404, 409...), não incidente.
+      Sentry.captureException(err);
       return apiError("Erro interno. Tente novamente em instantes.", 500);
     }
   };

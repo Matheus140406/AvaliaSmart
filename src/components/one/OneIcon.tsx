@@ -76,15 +76,15 @@ export function OneIcon({ status, size = 40, label, className }: OneIconProps) {
       };
 
   // `rotate: [0, 360]` (keyframes), não `rotate: 360` (alvo único) — padrão
-  // recomendado do próprio Motion pra giro contínuo. Um alvo único com
-  // `repeat: Infinity` fica vulnerável a um caso real: se "thinking" for
-  // interrompido (troca pra "done"/"idle") e reativado de novo enquanto o
-  // ângulo atual já está perto de 360, o Motion pode não ter uma distância
-  // angular real pra percorrer e o anel fica visualmente parado (girando
-  // "no lugar") até a rotação acumulada se desalinhar o bastante — olhando
-  // estático mesmo com o loop tecnicamente rodando. Keyframes evita isso
-  // porque cada ciclo é sempre relativo (soma 360/-360 ao valor atual, não
-  // aponta pra um valor absoluto fixo).
+  // recomendado do próprio Motion pra giro contínuo.
+  //
+  // BUG CORRIGIDO: "done" tinha `rotate: 0` explícito — ao interromper
+  // "thinking" em qualquer ângulo (ex.: 250°) e voltar pra 0 em 0.2s, o anel
+  // visivelmente girava PRA TRÁS por uma fração de segundo antes de
+  // desaparecer. "done" agora omite `rotate` de propósito: o Motion mantém
+  // o ângulo atual (não anima de volta) enquanto só a opacidade cai — sem
+  // giro reverso, e como o anel já está invisível (opacity: 0) ao reaparecer
+  // em "thinking", o ângulo "de onde ficou" nunca chega a ser visto.
   const outerRingVariants: Variants = prefersReducedMotion
     ? { idle: { opacity: 0 }, thinking: { opacity: 1, transition: TRANSITION_REDUCED }, done: { opacity: 0 } }
     : {
@@ -94,7 +94,7 @@ export function OneIcon({ status, size = 40, label, className }: OneIconProps) {
           rotate: [0, 360],
           transition: { opacity: { duration: 0.2 }, rotate: { duration: 1.4, repeat: Infinity, ease: "linear" } },
         },
-        done: { opacity: 0, rotate: 0, transition: { duration: 0.2 } },
+        done: { opacity: 0, transition: { duration: 0.2 } },
       };
 
   const innerRingVariants: Variants = prefersReducedMotion
@@ -106,7 +106,7 @@ export function OneIcon({ status, size = 40, label, className }: OneIconProps) {
           rotate: [0, -360],
           transition: { opacity: { duration: 0.2 }, rotate: { duration: 2.1, repeat: Infinity, ease: "linear" } },
         },
-        done: { opacity: 0, rotate: 0, transition: { duration: 0.2 } },
+        done: { opacity: 0, transition: { duration: 0.2 } },
       };
 
   return (

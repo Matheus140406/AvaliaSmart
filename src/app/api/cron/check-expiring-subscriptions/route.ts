@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { findPlanByTier } from "@/repositories/plan.repository";
 import { sendEmail, subscriptionExpiringSoonEmail } from "@/lib/email/resend";
+import { pruneRateLimitEvents } from "@/lib/rate-limit";
 
 /**
  * GET /api/cron/check-expiring-subscriptions — chamado 1x/dia pelo Vercel
@@ -90,8 +91,15 @@ export async function GET(request: NextRequest) {
   const emailsSentIn3Days = await notifyExpiring(3);
   const emailsSentToday = await notifyExpiring(0);
 
+  // Carona no cron diário: varre eventos de rate limit com mais de 24h
+  // (ver lib/rate-limit.ts) — evita um cron novo só pra housekeeping.
+  const rateLimitEventsPruned = await pruneRateLimitEvents().catch((err) => {
+    console.error("[cron] falha ao varrer RateLimitEvent (não bloqueia o resto):", err);
+    return 0;
+  });
+
   return NextResponse.json({
     success: true,
-    data: { expiredCount, emailsSentIn3Days, emailsSentToday },
+    data: { expiredCount, emailsSentIn3Days, emailsSentToday, rateLimitEventsPruned },
   });
 }

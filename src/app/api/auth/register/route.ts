@@ -4,7 +4,9 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { withErrorHandling } from "@/lib/http/error-handler";
 import { apiSuccess } from "@/lib/http/api-response";
-import { badRequest, conflict } from "@/lib/http/errors";
+import { badRequest, conflict, HttpError } from "@/lib/http/errors";
+import { isPlatformAdmin } from "@/lib/platform-admin";
+import { consumeRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 
 /**
  * POST /api/auth/register — cadastro por e-mail/senha.
@@ -32,12 +34,28 @@ const registerSchema = z.object({
 });
 
 export const POST = withErrorHandling(async (request: NextRequest) => {
+  // Criação de conta é barata pro atacante e cara pra nós (bcrypt + linha no
+  // banco) — 5 cadastros/hora por IP é folga suficiente pra uso legítimo.
+  const ip = clientIpFromHeaders(request.headers);
+  if (!(await consumeRateLimit(`register:ip:${ip}`, 5, 60 * 60 * 1000))) {
+    throw new HttpError(429, "Muitas tentativas de cadastro. Tente novamente em uma hora.");
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = registerSchema.safeParse(body);
   if (!parsed.success) {
     throw badRequest(parsed.error.issues[0]?.message ?? "Dados inválidos.", parsed.error.flatten());
   }
   const { name, email, password } = parsed.data;
+
+  // E-mail listado em PLATFORM_ADMIN_EMAILS nunca pode ser registrado por
+  // senha: como o cadastro não verifica posse do e-mail, permitir isso
+  // deixaria qualquer um "reservar" a conta de um admin da plataforma antes
+  // do dono e herdar a visão financeira cross-tenant. Mesma mensagem do caso
+  // "conta já existe" de propósito — não confirmar que o e-mail é especial.
+  if (isPlatformAdmin(email)) {
+    throw conflict("Já existe uma conta com esse e-mail. Tente entrar.");
+  }
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {

@@ -29,6 +29,7 @@ export type AiFeatureFlag = keyof Pick<
   | "essayGrading"
   | "accessibility"
   | "imageDescription"
+  | "riskPrediction"
 >;
 
 export interface AiFeatureConfig {
@@ -80,6 +81,14 @@ export const AI_FEATURE_REGISTRY: Record<AiFeatureFlag, AiFeatureConfig> = {
     label: "Descrição de imagens (audiodescrição)",
     weight: "heavy",
     usageLogFeatures: ["DESCRICAO_IMAGEM"],
+  },
+  riskPrediction: {
+    label: "Predição de risco de reprovação",
+    // Processa o roster inteiro da turma numa única chamada — mesmo
+    // racional das outras heavy (prova/plano de aula/redação/imagem): saída
+    // proporcional ao número de alunos, não um resumo curto.
+    weight: "heavy",
+    usageLogFeatures: ["PREDICAO_RISCO"],
   },
 };
 

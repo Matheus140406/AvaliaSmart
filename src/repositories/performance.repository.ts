@@ -11,6 +11,7 @@ export interface SubjectPerformance {
 
 export interface StudentFlag {
   name: string;
+  studentId: string;
   average: number | null;
   attendancePct: number;
 }
@@ -23,6 +24,8 @@ export interface ClassPerformanceData {
   classAttendancePct: number;
   studentsBelowAverage: StudentFlag[];
   studentsLowAttendance: StudentFlag[];
+  /** Roster completo (não filtrado) — usado pela predição de risco, que precisa avaliar TODOS os alunos, não só os já flagged por um dos dois critérios isolados acima. */
+  allStudents: StudentFlag[];
   totalStudents: number;
 }
 
@@ -167,7 +170,7 @@ export async function getClassPerformanceData(
       attendances.length > 0
         ? (attendances.filter((a) => a.present || a.justified).length / attendances.length) * 100
         : 100;
-    return { name: e.student.name, average: null, attendancePct };
+    return { name: e.student.name, studentId: e.studentId, average: null, attendancePct };
   });
 
   // Média geral do aluno (todas as disciplinas, termo atual) — pra flag de "abaixo da média".
@@ -194,6 +197,7 @@ export async function getClassPerformanceData(
     classAttendancePct,
     studentsBelowAverage,
     studentsLowAttendance,
+    allStudents: studentFlags,
     totalStudents: enrollments.length,
   };
 }

@@ -4,6 +4,7 @@ import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { consumeRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 import type { MembershipRole } from "@/types/auth";
 
 /**
@@ -33,11 +34,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "E-mail", type: "email" },
         password: { label: "Senha", type: "password" },
       },
-      authorize: async (credentials) => {
+      authorize: async (credentials, request) => {
         const email = typeof credentials?.email === "string" ? credentials.email : undefined;
         const password =
           typeof credentials?.password === "string" ? credentials.password : undefined;
         if (!email || !password) return null;
+
+        // Freio anti brute force / credential stuffing, persistido em banco
+        // (ver lib/rate-limit.ts). Quando estoura, devolve `null` — a MESMA
+        // resposta de credencial errada, de propósito: um atacante não pode
+        // distinguir "senha errada" de "bloqueado", nem usar o bloqueio como
+        // oráculo de quais e-mails existem.
+        const ip = clientIpFromHeaders(request.headers);
+        const [ipAllowed, emailAllowed] = await Promise.all([
+          consumeRateLimit(`login:ip:${ip}`, 20, 15 * 60 * 1000),
+          consumeRateLimit(`login:email:${email.trim().toLowerCase()}`, 10, 15 * 60 * 1000),
+        ]);
+        if (!ipAllowed || !emailAllowed) return null;
 
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user?.passwordHash) return null; // conta só-Google, sem senha local

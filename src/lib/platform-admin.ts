@@ -1,3 +1,5 @@
+import { prisma } from "@/lib/prisma";
+
 /**
  * Módulo financeiro (Etapa 7) é uma visão CROSS-TENANT (status de
  * assinatura de TODOS os tenants) — não é uma feature de tenant, é
@@ -16,4 +18,26 @@ export function isPlatformAdmin(email: string | null | undefined): boolean {
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
   return allowed.includes(email.trim().toLowerCase());
+}
+
+/**
+ * Variante que os gates cross-tenant DEVEM usar: além do allowlist, exige
+ * que a conta tenha o e-mail VERIFICADO (`User.emailVerified`) — só o login
+ * via Google (PrismaAdapter) seta esse campo hoje; cadastro por senha não.
+ *
+ * Sem essa checagem, o allowlist tinha um buraco real: o cadastro
+ * (/api/auth/register) não verifica posse do e-mail, então qualquer pessoa
+ * que soubesse um e-mail listado em PLATFORM_ADMIN_EMAILS podia registrá-lo
+ * antes do dono (com a própria senha) e herdar a visão financeira
+ * cross-tenant. Register também bloqueia e-mails do allowlist na origem —
+ * as duas camadas juntas fecham o buraco. Na prática: platform admin entra
+ * com Google, sempre.
+ */
+export async function isVerifiedPlatformAdmin(email: string | null | undefined): Promise<boolean> {
+  if (!isPlatformAdmin(email)) return false;
+  const user = await prisma.user.findUnique({
+    where: { email: email!.trim().toLowerCase() },
+    select: { emailVerified: true },
+  });
+  return user?.emailVerified != null;
 }

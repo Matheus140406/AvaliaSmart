@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { resolveSubscription } from "@/lib/billing/guard";
 import { listActivePlans } from "@/repositories/plan.repository";
 import { PlanosToggleView } from "@/components/billing/PlanosToggleView";
+import { ReceiptsList } from "@/components/billing/ReceiptsList";
 
 export default async function PlanosPage() {
   const user = await getCurrentUser();
@@ -51,6 +52,13 @@ export default async function PlanosPage() {
       <p className="mt-6 text-xs text-[var(--color-foreground-muted)]">
         Todo workspace novo começa com 5 dias de teste grátis, sem cartão.
       </p>
+
+      {user.role === "ADMIN" && (
+        <div className="mt-10">
+          <h2 className="mb-3 text-sm font-semibold text-[var(--color-foreground)]">Comprovantes de pagamento</h2>
+          <ReceiptsList />
+        </div>
+      )}
     </div>
   );
 }

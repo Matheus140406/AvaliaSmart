@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { isPlatformAdmin } from "@/lib/platform-admin";
+import { isVerifiedPlatformAdmin } from "@/lib/platform-admin";
 import { listTenantsBillingStatus } from "@/services/platform-billing.service";
 import { apiSuccess, apiError } from "@/lib/http/api-response";
 
@@ -11,7 +11,7 @@ import { apiSuccess, apiError } from "@/lib/http/api-response";
  */
 export async function GET(): Promise<NextResponse> {
   const session = await auth();
-  if (!isPlatformAdmin(session?.user?.email)) {
+  if (!(await isVerifiedPlatformAdmin(session?.user?.email))) {
     return apiError("Não autorizado.", 403);
   }
 

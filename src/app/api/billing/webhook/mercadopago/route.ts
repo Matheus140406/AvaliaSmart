@@ -77,6 +77,16 @@ export async function POST(request: NextRequest) {
             where: { tenantId: parsed.tenantId },
             data: { tier: parsed.tier, status: "ATIVA", trialEndsAt: null, currentPeriodEnd: validUntil },
           });
+          // Webhook roda fora do contexto de tenant — a extension de audit
+          // não cobre; registro manual, ator "sistema" (membershipId null).
+          await tx.auditLog.create({
+            data: {
+              tenantId: parsed.tenantId,
+              action: "UPDATE",
+              model: "Subscription",
+              newValue: { source: "mp-webhook", paymentId: String(effectiveId), tier: parsed.tier, status: "ATIVA" },
+            },
+          });
           const amountCents = Math.round(
             (typeof payment.transaction_amount === "number" ? payment.transaction_amount : plan.priceCentsTotal / 100) * 100
           );
@@ -97,6 +107,14 @@ export async function POST(request: NextRequest) {
           await tx.subscription.updateMany({
             where: { tenantId: parsed.tenantId, status: "ATIVA", tier: { not: "TESTE_GRATIS" } },
             data: { status: "INADIMPLENTE" },
+          });
+          await tx.auditLog.create({
+            data: {
+              tenantId: parsed.tenantId,
+              action: "UPDATE",
+              model: "Subscription",
+              newValue: { source: "mp-webhook", paymentId: String(effectiveId), status: "INADIMPLENTE" },
+            },
           });
         }
         return { shouldEmail: false, receiptId: null as string | null };

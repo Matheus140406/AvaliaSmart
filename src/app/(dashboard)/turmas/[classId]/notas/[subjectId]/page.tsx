@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Upload } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { toGradeCellValues, toGradeConfigDTO, toStudentRow } from "@/lib/grades/serialize";
@@ -78,13 +78,22 @@ export default async function NotasPage({ params, searchParams }: PageProps) {
           </h1>
           <p className="text-sm text-[var(--color-foreground-muted)]">{term.name}</p>
         </div>
-        <Link
-          href={`/turmas/${classId}/chamada/${subjectId}`}
-          className="flex shrink-0 items-center text-xs font-medium text-brand hover:underline"
-        >
-          Lançar chamada
-          <ChevronRight size={14} />
-        </Link>
+        <div className="flex shrink-0 items-center gap-4">
+          <Link
+            href={`/importar?classId=${classId}&classSubjectId=${classSubject.id}&termId=${term.id}`}
+            className="flex items-center gap-1 text-xs font-medium text-brand hover:underline"
+          >
+            <Upload size={14} />
+            Importar notas
+          </Link>
+          <Link
+            href={`/turmas/${classId}/chamada/${subjectId}`}
+            className="flex items-center text-xs font-medium text-brand hover:underline"
+          >
+            Lançar chamada
+            <ChevronRight size={14} />
+          </Link>
+        </div>
       </div>
 
       <GradeGridConnected

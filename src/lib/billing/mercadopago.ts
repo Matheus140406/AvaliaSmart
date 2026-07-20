@@ -76,7 +76,17 @@ export async function createMercadoPagoSubscription(
     },
   });
 
-  return { preapprovalId: result.id as string, initPoint: (result.init_point as string) ?? null };
+  // Credencial TEST- (sandbox) recebe `sandbox_init_point` — o `init_point`
+  // "de produção" que o MP também devolve nesse caso não aceita pagador de
+  // teste. BUG CORRIGIDO: o código antigo só lia `init_point`, então testes
+  // com credencial TEST- caíam no checkout de produção e o pagamento de
+  // teste era rejeitado.
+  const isTestCredential = ACCESS_TOKEN?.startsWith("TEST-") ?? false;
+  const initPoint = isTestCredential
+    ? (result.sandbox_init_point as string | undefined) ?? (result.init_point as string | undefined)
+    : (result.init_point as string | undefined) ?? (result.sandbox_init_point as string | undefined);
+
+  return { preapprovalId: result.id as string, initPoint: initPoint ?? null };
 }
 
 /** Busca o recurso completo de um pagamento — o webhook só manda o ID. */
