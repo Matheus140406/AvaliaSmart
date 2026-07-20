@@ -9,6 +9,7 @@ import { AnimatedList, AnimatedListItem } from "@/components/motion/AnimatedCard
 import { ShareWhatsAppButton } from "@/components/export/ShareWhatsAppButton";
 import { GuardianPortalLinkButton } from "@/components/export/GuardianPortalLinkButton";
 import { ObservationSuggestionButton } from "@/components/turmas/ObservationSuggestionButton";
+import { ParentCommunicationButton } from "@/components/turmas/ParentCommunicationButton";
 
 interface PageProps {
   params: Promise<{ classId: string; subjectId: string }>;
@@ -143,6 +144,7 @@ export default async function NotasPage({ params, searchParams }: PageProps) {
                 <ShareWhatsAppButton kind="boletim-pdf" params={{ enrollmentId: e.id }} className="!px-2 !py-1 text-[11px]" />
                 <GuardianPortalLinkButton enrollmentId={e.id} />
                 <ObservationSuggestionButton studentId={e.student.id} studentName={e.student.name} termId={term.id} />
+                <ParentCommunicationButton scopeType="STUDENT" scopeId={e.student.id} scopeLabel={e.student.name} />
               </div>
             </AnimatedListItem>
           ))}

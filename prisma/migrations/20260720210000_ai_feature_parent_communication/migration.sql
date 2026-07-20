@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "AiFeature" ADD VALUE 'COMUNICADO_PAIS';

@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { AiSummaryCard } from "@/components/turmas/AiSummaryCard";
 import { RiskPredictionPanel } from "@/components/turmas/RiskPredictionPanel";
 import { ClassComparisonChart } from "@/components/turmas/ClassComparisonChart";
+import { ParentCommunicationButton } from "@/components/turmas/ParentCommunicationButton";
 
 interface ClassDetailData {
   class: { id: string; name: string; gradeLevel: string | null; shift: string | null; studentCount: number };
@@ -49,15 +50,18 @@ export function ClassDetail({ classId }: { classId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <a
-        href={`/api/export/pdf/ata-resultados?classId=${classId}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex w-fit items-center gap-1.5 self-end text-xs font-medium text-brand hover:underline"
-      >
-        <FileText size={13} />
-        Ata de Resultados Finais (PDF)
-      </a>
+      <div className="flex items-center gap-4 self-end">
+        <ParentCommunicationButton scopeType="CLASS" scopeId={classId} scopeLabel={data.class.name} />
+        <a
+          href={`/api/export/pdf/ata-resultados?classId=${classId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
+        >
+          <FileText size={13} />
+          Ata de Resultados Finais (PDF)
+        </a>
+      </div>
       <AiSummaryCard classId={classId} />
       <ClassComparisonChart classId={classId} />
       <RiskPredictionPanel classId={classId} />

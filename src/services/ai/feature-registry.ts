@@ -43,9 +43,9 @@ export interface AiFeatureConfig {
 
 export const AI_FEATURE_REGISTRY: Record<AiFeatureFlag, AiFeatureConfig> = {
   aiAssistant: {
-    label: "Resumo de desempenho, sugestão de observação e chat pedagógico",
+    label: "Resumo de desempenho, sugestão de observação, comunicado aos pais e chat pedagógico",
     weight: "light",
-    usageLogFeatures: ["RESUMO_DESEMPENHO", "SUGESTAO_OBSERVACAO", "CHAT_PERGUNTAS"],
+    usageLogFeatures: ["RESUMO_DESEMPENHO", "SUGESTAO_OBSERVACAO", "CHAT_PERGUNTAS", "COMUNICADO_PAIS"],
   },
   examGenerator: {
     label: "Gerador de provas/questionários",
