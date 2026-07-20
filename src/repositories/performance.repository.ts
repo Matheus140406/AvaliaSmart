@@ -12,6 +12,7 @@ export interface SubjectPerformance {
 export interface StudentFlag {
   name: string;
   studentId: string;
+  enrollmentId: string;
   average: number | null;
   attendancePct: number;
 }
@@ -170,7 +171,7 @@ export async function getClassPerformanceData(
       attendances.length > 0
         ? (attendances.filter((a) => a.present || a.justified).length / attendances.length) * 100
         : 100;
-    return { name: e.student.name, studentId: e.studentId, average: null, attendancePct };
+    return { name: e.student.name, studentId: e.studentId, enrollmentId: e.id, average: null, attendancePct };
   });
 
   // Média geral do aluno (todas as disciplinas, termo atual) — pra flag de "abaixo da média".

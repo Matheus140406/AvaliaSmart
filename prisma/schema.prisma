@@ -999,3 +999,26 @@ model RateLimitEvent {
 
   @@index([key, createdAt])
 }
+
+// -------------------------------------------------------------------------------------
+// ALERTA DE RISCO (aviso proativo, baseado em regra — sem IA)
+// -------------------------------------------------------------------------------------
+
+/// Dedup de alerta de risco por (matrícula, período, tipo) — mesmo padrão do
+/// AbsenceAlertLog: sem isso, o cron diário reenviaria o mesmo aviso todo
+/// dia enquanto a condição persistir. Uma linha aqui = "já avisamos sobre
+/// isso neste período", válida até o período (Term) trocar.
+model RiskAlertLog {
+  id           String   @id @default(cuid())
+  enrollmentId String
+  termId       String
+  riskType     RiskAlertType
+  createdAt    DateTime @default(now())
+
+  @@unique([enrollmentId, termId, riskType])
+}
+
+enum RiskAlertType {
+  MEDIA_BAIXA
+  FREQUENCIA_BAIXA
+}
