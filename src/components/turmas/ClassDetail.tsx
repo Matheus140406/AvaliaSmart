@@ -6,6 +6,7 @@ import { ClipboardCheck, Sparkles, ArrowRight } from "lucide-react";
 import { AnimatedCard, AnimatedList, AnimatedListItem } from "@/components/motion/AnimatedCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { AiSummaryCard } from "@/components/turmas/AiSummaryCard";
+import { RiskPredictionPanel } from "@/components/turmas/RiskPredictionPanel";
 
 interface ClassDetailData {
   class: { id: string; name: string; gradeLevel: string | null; shift: string | null; studentCount: number };
@@ -48,6 +49,7 @@ export function ClassDetail({ classId }: { classId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <AiSummaryCard classId={classId} />
+      <RiskPredictionPanel classId={classId} />
 
       <div className="grid gap-4 lg:grid-cols-2">
       {/* Coluna esquerda */}

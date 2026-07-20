@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendEmail, consecutiveAbsencesEmail } from "@/lib/email/resend";
 import { findRecentAttendanceForAbsenceCheck } from "@/repositories/attendance.repository";
+import { dispatchNotification } from "@/services/notification.service";
 
 /**
  * Aviso de faltas consecutivas (Etapa 6) — roda 1x/dia via
@@ -25,10 +26,10 @@ interface AttendanceRow {
   classSubjectId: string;
   date: Date;
   present: boolean;
-  enrollment: { student: { name: string } };
+  enrollment: { student: { id: string; name: string } };
   classSubject: {
     subject: { name: string };
-    class: { name: string };
+    class: { name: string; tenantId: string };
     teacher: { user: { email: string } } | null;
   };
 }
@@ -75,15 +76,33 @@ export async function checkConsecutiveAbsences(
     });
     if (alreadyAlerted) continue;
 
-    await sendEmail({
+    const studentName = window[0].enrollment.student.name;
+    const subjectName = window[0].classSubject.subject.name;
+    const className = window[0].classSubject.class.name;
+
+    // Tenta um NotificationTemplate cadastrado pro trigger primeiro (motor
+    // de notificações — sem UI de admin ainda, então hoje isso é sempre
+    // "no-template" na prática); sem template, cai no e-mail hard-coded que
+    // já existia, preservando o comportamento de antes.
+    const outcome = await dispatchNotification({
+      tenantId: window[0].classSubject.class.tenantId,
+      trigger: "FALTA_EXCESSIVA",
       to: teacherEmail,
-      ...consecutiveAbsencesEmail({
-        studentName: window[0].enrollment.student.name,
-        subjectName: window[0].classSubject.subject.name,
-        className: window[0].classSubject.class.name,
-        consecutiveCount: threshold,
-      }),
+      studentId: window[0].enrollment.student.id,
+      vars: { nome_aluno: studentName, disciplina: subjectName, turma: className },
     });
+
+    if (!outcome.sent && outcome.reason === "no-template") {
+      await sendEmail({
+        to: teacherEmail,
+        ...consecutiveAbsencesEmail({
+          studentName,
+          subjectName,
+          className,
+          consecutiveCount: threshold,
+        }),
+      });
+    }
     await prisma.absenceAlertLog.create({
       data: {
         enrollmentId: window[0].enrollmentId,

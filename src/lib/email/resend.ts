@@ -9,6 +9,11 @@ import { Resend } from "resend";
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM = process.env.EMAIL_FROM ?? "AvaliaSmart <notificacoes@avaliasmart.app>";
 
+/** Usado por quem precisa saber ANTES de chamar `sendEmail` se o envio é real ou vai virar no-op (ex.: `notification.service.ts`, que registra o resultado num log — não pode marcar "enviado" sem saber se there's client configurado). */
+export function isEmailConfigured(): boolean {
+  return resend !== null;
+}
+
 export interface EmailAttachment {
   filename: string;
   content: Buffer;
