@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCard, AnimatedList, AnimatedListItem } from "@/components/motion/AnimatedCard";
 
@@ -140,7 +142,18 @@ function OrganizationCard({ org, candidateTenants }: { org: OrganizationData; ca
       className="rounded-lg border p-4"
       style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface-raised)" }}
     >
-      <p className="mb-2 text-sm font-semibold text-[var(--color-foreground)]">{org.name}</p>
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-sm font-semibold text-[var(--color-foreground)]">{org.name}</p>
+        {org.tenants.length > 0 && (
+          <Link
+            href={`/organizacoes/${org.id}/dashboard`}
+            className="flex items-center gap-1 text-xs font-medium text-brand hover:underline"
+          >
+            <LayoutDashboard size={12} />
+            Dashboard consolidado
+          </Link>
+        )}
+      </div>
 
       {org.tenants.length === 0 ? (
         <p className="mb-3 text-xs text-[var(--color-foreground-muted)]">Nenhuma escola vinculada ainda.</p>
