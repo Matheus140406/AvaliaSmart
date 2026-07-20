@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ClipboardCheck, Sparkles, ArrowRight } from "lucide-react";
+import { ClipboardCheck, Sparkles, ArrowRight, FileText } from "lucide-react";
 import { AnimatedCard, AnimatedList, AnimatedListItem } from "@/components/motion/AnimatedCard";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { AiSummaryCard } from "@/components/turmas/AiSummaryCard";
@@ -49,6 +49,15 @@ export function ClassDetail({ classId }: { classId: string }) {
 
   return (
     <div className="flex flex-col gap-4">
+      <a
+        href={`/api/export/pdf/ata-resultados?classId=${classId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex w-fit items-center gap-1.5 self-end text-xs font-medium text-brand hover:underline"
+      >
+        <FileText size={13} />
+        Ata de Resultados Finais (PDF)
+      </a>
       <AiSummaryCard classId={classId} />
       <ClassComparisonChart classId={classId} />
       <RiskPredictionPanel classId={classId} />

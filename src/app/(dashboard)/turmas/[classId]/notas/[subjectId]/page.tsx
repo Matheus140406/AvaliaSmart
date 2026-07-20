@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, Upload } from "lucide-react";
+import { ChevronRight, Upload, FileText } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { toGradeCellValues, toGradeConfigDTO, toStudentRow } from "@/lib/grades/serialize";
@@ -80,6 +80,15 @@ export default async function NotasPage({ params, searchParams }: PageProps) {
           <p className="text-sm text-[var(--color-foreground-muted)]">{term.name}</p>
         </div>
         <div className="flex shrink-0 items-center gap-4">
+          <a
+            href={`/api/export/pdf/mapa-notas?classSubjectId=${classSubject.id}&termId=${term.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-xs font-medium text-brand hover:underline"
+          >
+            <FileText size={14} />
+            Mapa de notas
+          </a>
           <Link
             href={`/importar?classId=${classId}&classSubjectId=${classSubject.id}&termId=${term.id}`}
             className="flex items-center gap-1 text-xs font-medium text-brand hover:underline"
