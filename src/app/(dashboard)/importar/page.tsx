@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { toGradeConfigDTO } from "@/lib/grades/serialize";
 import ImportWizard from "@/components/import/ImportWizard";
+import { ImportContextPicker } from "@/components/import/ImportContextPicker";
 
 interface PageProps {
   searchParams: Promise<{ classId?: string; classSubjectId?: string; termId?: string }>;
@@ -19,10 +20,11 @@ export default async function ImportarPage({ searchParams }: PageProps) {
   if (!classId || !classSubjectId || !termId) {
     return (
       <div className="p-6">
-        <p className="text-sm text-[var(--color-foreground-muted)]">
-          Selecione uma turma, disciplina e período pra importar notas — acesse esta página a
-          partir da tela de lançamento de notas daquela turma.
+        <h1 className="mb-1 text-lg font-semibold text-[var(--color-foreground)]">Importar notas</h1>
+        <p className="mb-4 text-sm text-[var(--color-foreground-muted)]">
+          Selecione a turma, disciplina e período pra importar notas.
         </p>
+        <ImportContextPicker />
       </div>
     );
   }

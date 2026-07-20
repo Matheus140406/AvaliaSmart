@@ -15,11 +15,33 @@
 
 const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
 
+const SANDBOX_URL = "https://api-sandbox.asaas.com/v3";
+const PRODUCTION_URL = "https://api.asaas.com/v3";
+
+/**
+ * BUG CORRIGIDO: o código antigo tratava "não começa com $aact_hmlg_" como
+ * sinônimo de produção — uma chave sandbox digitada errado, um formato novo
+ * do Asaas, ou o override abaixo ausente caíam SILENCIOSAMENTE na URL de
+ * produção com credencial de teste. Agora produção é reconhecida
+ * explicitamente pelo prefixo dela também, e prefixo desconhecido avisa alto
+ * (não só decide por baixo do capô) antes de cair no default de produção —
+ * `ASAAS_ENV` permite forçar o ambiente sem depender do prefixo.
+ */
 function baseUrl(): string {
   if (!ASAAS_API_KEY) throw new Error("ASAAS_API_KEY não configurada.");
-  return ASAAS_API_KEY.startsWith("$aact_hmlg_")
-    ? "https://api-sandbox.asaas.com/v3"
-    : "https://api.asaas.com/v3";
+
+  const override = process.env.ASAAS_ENV;
+  if (override === "sandbox") return SANDBOX_URL;
+  if (override === "production") return PRODUCTION_URL;
+
+  if (ASAAS_API_KEY.startsWith("$aact_hmlg_")) return SANDBOX_URL;
+  if (ASAAS_API_KEY.startsWith("$aact_prod_")) return PRODUCTION_URL;
+
+  console.warn(
+    "[asaas] ASAAS_API_KEY não tem prefixo $aact_hmlg_ (sandbox) nem $aact_prod_ (produção) reconhecido — " +
+      "assumindo PRODUÇÃO por padrão. Se isso não for intencional, defina ASAAS_ENV=sandbox|production explicitamente."
+  );
+  return PRODUCTION_URL;
 }
 
 export function isAsaasConfigured(): boolean {

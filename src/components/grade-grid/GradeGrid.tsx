@@ -182,25 +182,6 @@ function useGradeStore(): GradeStore {
   return store;
 }
 
-/**
- * Auto-save simulado (mock). Em produção, substitua via a prop `onSaveGrade`
- * por uma chamada real (ex.: `PATCH /api/grades`).
- * Mantém uma pequena taxa de falha aleatória apenas para exercitar o estado de erro.
- */
-async function mockSaveGrade(params: {
-  enrollmentId: string;
-  gradeConfigId: string;
-  value: number | null;
-}): Promise<void> {
-  const latency = 300 + Math.random() * 400;
-  await new Promise((resolve) => setTimeout(resolve, latency));
-  if (Math.random() < 0.05) {
-    throw new Error("Falha simulada ao salvar nota.");
-  }
-  // eslint-disable-next-line no-console
-  console.debug("[GradeGrid] nota salva (mock):", params);
-}
-
 // ---------------------------------------------------------------------------------------
 // Navegação por teclado
 // ---------------------------------------------------------------------------------------
@@ -432,7 +413,15 @@ export interface GradeGridProps {
   students: StudentRow[];
   gradeConfigs: GradeConfigDTO[];
   initialGrades: GradeCellValue[];
-  onSaveGrade?: SaveFn;
+  /**
+   * Obrigatória de propósito: sem handler real, salvar uma nota não pode
+   * silenciosamente descartar o valor (BUG CORRIGIDO — havia um
+   * `mockSaveGrade` default com 5% de falha aleatória; `GradeGridConnected`
+   * sempre injetava o handler real, então o mock nunca era exercitado em
+   * produção, mas qualquer uso direto de `<GradeGrid>` sem passar por ele
+   * perderia notas de verdade).
+   */
+  onSaveGrade: SaveFn;
   className?: string;
 }
 
@@ -453,7 +442,7 @@ export default function GradeGrid({
     for (const g of initialGrades) {
       initialMap.set(cellKeyToString(g), { value: g.value, status: "idle" });
     }
-    return new GradeStore(initialMap, onSaveGrade ?? mockSaveGrade);
+    return new GradeStore(initialMap, onSaveGrade);
   });
 
   const { registerRef, handleKeyDown } = useGridNavigation(

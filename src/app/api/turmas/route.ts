@@ -48,7 +48,15 @@ export const GET = withTenant(async (_request, user) => {
       gradeLevel: c.gradeLevel,
       shift: c.shift,
       studentCount: c.enrollments.length,
-      subjects: c.classSubjects.map((cs) => ({ id: cs.subjectId, name: cs.subject.name })),
+      // `id` continua sendo Subject.id (usado na rota /turmas/[classId]/notas/[subjectId],
+      // que resolve o ClassSubject a partir de classId+subjectId). `classSubjectId`
+      // é novo aqui — o seletor de contexto do import (`ImportContextPicker`)
+      // precisa do ClassSubject.id direto, que a rota de import já exige.
+      subjects: c.classSubjects.map((cs) => ({
+        id: cs.subjectId,
+        classSubjectId: cs.id,
+        name: cs.subject.name,
+      })),
     })),
   });
 });
