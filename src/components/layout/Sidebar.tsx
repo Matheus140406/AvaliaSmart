@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LayoutDashboard, Users, ClipboardCheck, PenLine, Upload, CreditCard, MessageSquare, LogOut, Plus, Sparkles, Building2 } from "lucide-react";
+import { LayoutDashboard, Users, ClipboardCheck, PenLine, Upload, CreditCard, MessageSquare, LogOut, Plus, Sparkles, Building2, Tags, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OneAvatar } from "@/components/one/OneAvatar";
 
@@ -26,8 +26,10 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/turmas", label: "Turmas", icon: Users },
   { href: "/avaliacoes/nova", label: "Avaliações", icon: ClipboardCheck },
+  { href: "/tipos-avaliacao", label: "Tipos de avaliação", icon: Tags },
   { href: "/redacao", label: "Correção de redação", icon: PenLine, badge: "IA" },
   { href: "/importar", label: "Importar", icon: Upload },
+  { href: "/convites", label: "Convites", icon: UserPlus },
   { href: "/planos", label: "Planos", icon: CreditCard },
   { href: "/organizacoes", label: "Redes de escolas", icon: Building2 },
 ];

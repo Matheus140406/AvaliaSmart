@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { FileQuestion, GraduationCap, Paperclip, Send, PanelLeft } from "lucide-react";
+import { FileQuestion, GraduationCap, Paperclip, Send, PanelLeft, Layers, Wand2, Accessibility, Download } from "lucide-react";
 import type { OneIconStatus } from "@/components/one/OneIcon";
 import { OneAvatar } from "@/components/one/OneAvatar";
 import { Button } from "@/components/ui/button";
@@ -59,9 +59,70 @@ interface LessonPlanResultMessage {
   assessment: LessonPlanBlock;
 }
 
-type FeedItem = ({ kind: "message" } & ChatMessageData) | ExamResultMessage | LessonPlanResultMessage;
+interface FlashcardsResultMessage {
+  kind: "flashcards";
+  id: string;
+  title: string;
+  cardCount: number;
+}
 
-type CommandKind = "gerar_prova" | "plano_aula";
+interface AdaptedTextResultMessage {
+  kind: "adaptedText";
+  id: string;
+  adaptedText: string;
+  targetLevel: "FUNDAMENTAL" | "MEDIO" | "EJA";
+}
+
+interface MindMapBranch {
+  topic: string;
+  subtopics: string[];
+}
+
+interface AccessibilityResultMessage {
+  kind: "accessibility";
+  id: string;
+  simpleLanguageText: string;
+  mindMap: { centralTopic: string; branches: MindMapBranch[] };
+}
+
+type FeedItem =
+  | ({ kind: "message" } & ChatMessageData)
+  | ExamResultMessage
+  | LessonPlanResultMessage
+  | FlashcardsResultMessage
+  | AdaptedTextResultMessage
+  | AccessibilityResultMessage;
+
+/**
+ * Só 5 dos 6 comandos de `chat-commands.ts` (Etapa 8) ganham pílula aqui —
+ * "corrigir_redacao" já tem página dedicada (`/redacao`, com upload de
+ * imagem, que este chat de texto puro não suporta) e não precisa de
+ * duplicata.
+ */
+type CommandKind = "gerar_prova" | "plano_aula" | "gerar_flashcards" | "adaptar_texto" | "acessibilidade";
+
+const COMMAND_LABEL: Record<CommandKind, string> = {
+  gerar_prova: "Gerar prova",
+  plano_aula: "Plano de aula (BNCC)",
+  gerar_flashcards: "Gerar flashcards",
+  adaptar_texto: "Adaptar nível de texto",
+  acessibilidade: "Acessibilidade",
+};
+
+/** Tamanho mínimo de texto exigido por comando (ver commandContextSchemas em chat-commands.ts) — o botão "Gerar" usa isso pra desabilitar antes de bater no servidor. */
+const COMMAND_MIN_LENGTH: Record<CommandKind, number> = {
+  gerar_prova: 50,
+  plano_aula: 50,
+  gerar_flashcards: 50,
+  adaptar_texto: 20,
+  acessibilidade: 30,
+};
+
+const TARGET_LEVEL_LABEL: Record<"FUNDAMENTAL" | "MEDIO" | "EJA", string> = {
+  FUNDAMENTAL: "Ensino Fundamental",
+  MEDIO: "Ensino Médio",
+  EJA: "EJA",
+};
 const DONE_HOLD_MS = 450;
 const CLIENT_TIMEOUT_MS = 55_000;
 const TEXTAREA_MAX_HEIGHT_PX = 160;
@@ -99,6 +160,7 @@ export function ChatCard() {
   const [commandModal, setCommandModal] = useState<CommandKind | null>(null);
   const [commandText, setCommandText] = useState("");
   const [commandSubjectHint, setCommandSubjectHint] = useState("");
+  const [commandTargetLevel, setCommandTargetLevel] = useState<"FUNDAMENTAL" | "MEDIO" | "EJA">("FUNDAMENTAL");
   const [commandError, setCommandError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
@@ -360,7 +422,7 @@ export function ChatCard() {
 
   async function handleCommandSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!commandModal || commandText.trim().length < 50) return;
+    if (!commandModal || commandText.trim().length < COMMAND_MIN_LENGTH[commandModal]) return;
 
     if (doneTimeoutRef.current) {
       clearTimeout(doneTimeoutRef.current);
@@ -370,14 +432,22 @@ export function ChatCard() {
     setStatus("thinking");
     const command = commandModal;
 
+    // Cada comando tem seu próprio schema de contexto (ver
+    // commandContextSchemas em chat-commands.ts) — só adaptar_texto usa
+    // targetLevel em vez de subjectHint, e acessibilidade não usa nenhum
+    // campo extra além do texto.
+    const context =
+      command === "adaptar_texto"
+        ? { text: commandText.trim(), targetLevel: commandTargetLevel }
+        : command === "acessibilidade"
+          ? { text: commandText.trim() }
+          : { text: commandText.trim(), subjectHint: commandSubjectHint.trim() || undefined };
+
     try {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          command,
-          context: { text: commandText.trim(), subjectHint: commandSubjectHint.trim() || undefined },
-        }),
+        body: JSON.stringify({ command, context }),
         signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS),
       });
       const body = await res.json();
@@ -396,7 +466,7 @@ export function ChatCard() {
             essayCount: body.data.essay.length,
           },
         ]);
-      } else {
+      } else if (command === "plano_aula") {
         setItems((prev) => [
           ...prev,
           {
@@ -410,11 +480,37 @@ export function ChatCard() {
             assessment: body.data.assessment,
           },
         ]);
+      } else if (command === "gerar_flashcards") {
+        setItems((prev) => [
+          ...prev,
+          { kind: "flashcards", id: body.data.id, title: body.data.title, cardCount: body.data.cards.length },
+        ]);
+      } else if (command === "adaptar_texto") {
+        setItems((prev) => [
+          ...prev,
+          {
+            kind: "adaptedText",
+            id: `adapted-${Date.now()}`,
+            adaptedText: body.data.adaptedText,
+            targetLevel: body.data.targetLevel,
+          },
+        ]);
+      } else {
+        setItems((prev) => [
+          ...prev,
+          {
+            kind: "accessibility",
+            id: `accessibility-${Date.now()}`,
+            simpleLanguageText: body.data.simpleLanguageText,
+            mindMap: body.data.mindMap,
+          },
+        ]);
       }
 
       setCommandModal(null);
       setCommandText("");
       setCommandSubjectHint("");
+      setCommandTargetLevel("FUNDAMENTAL");
       setStatus("done");
       doneTimeoutRef.current = setTimeout(() => {
         setStatus("idle");
@@ -427,7 +523,7 @@ export function ChatCard() {
   }
 
   const inputDisabled = status === "thinking" || planBlocked;
-  const commandModalTitle = commandModal === "gerar_prova" ? "Gerar prova" : "Plano de aula (BNCC)";
+  const commandModalTitle = commandModal ? COMMAND_LABEL[commandModal] : "";
 
   const sidebarProps = {
     conversations,
@@ -469,7 +565,7 @@ export function ChatCard() {
           </div>
         </div>
 
-        <div className="flex shrink-0 gap-2 border-b border-[var(--color-border)] px-4 py-2">
+        <div className="flex shrink-0 flex-wrap gap-2 border-b border-[var(--color-border)] px-4 py-2">
           <Button variant="ghost" onClick={() => setCommandModal("gerar_prova")} disabled={inputDisabled}>
             <FileQuestion size={15} className="mr-1.5 inline-block align-[-3px]" />
             Gerar prova
@@ -477,6 +573,18 @@ export function ChatCard() {
           <Button variant="ghost" onClick={() => setCommandModal("plano_aula")} disabled={inputDisabled}>
             <GraduationCap size={15} className="mr-1.5 inline-block align-[-3px]" />
             Plano de aula
+          </Button>
+          <Button variant="ghost" onClick={() => setCommandModal("gerar_flashcards")} disabled={inputDisabled}>
+            <Layers size={15} className="mr-1.5 inline-block align-[-3px]" />
+            Flashcards
+          </Button>
+          <Button variant="ghost" onClick={() => setCommandModal("adaptar_texto")} disabled={inputDisabled}>
+            <Wand2 size={15} className="mr-1.5 inline-block align-[-3px]" />
+            Adaptar texto
+          </Button>
+          <Button variant="ghost" onClick={() => setCommandModal("acessibilidade")} disabled={inputDisabled}>
+            <Accessibility size={15} className="mr-1.5 inline-block align-[-3px]" />
+            Acessibilidade
           </Button>
         </div>
 
@@ -527,6 +635,88 @@ export function ChatCard() {
                 );
               }
 
+              if (item.kind === "lessonPlan") {
+                return (
+                  <motion.div
+                    key={item.id}
+                    layout
+                    initial="hidden"
+                    animate="visible"
+                    variants={fadeSlideUpItem}
+                    data-theme-surface
+                    className="max-w-[90%] self-start space-y-2 rounded-lg border p-3 text-sm"
+                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface-muted)" }}
+                  >
+                    <p className="font-medium text-[var(--color-foreground)]">{item.title}</p>
+                    <ul className="list-inside list-disc text-xs text-[var(--color-foreground-muted)]">
+                      {item.bnccCompetencies.map((c, ci) => (
+                        <li key={ci}>{c}</li>
+                      ))}
+                    </ul>
+                    {(
+                      [
+                        ["Introdução", item.introduction],
+                        ["Desenvolvimento", item.development],
+                        ["Atividade prática", item.practicalActivity],
+                        ["Avaliação", item.assessment],
+                      ] as const
+                    ).map(([label, block]) => (
+                      <div key={label}>
+                        <p className="text-xs font-semibold text-[var(--color-foreground)]">
+                          {label} ({block.durationMinutes} min)
+                        </p>
+                        <p className="text-xs text-[var(--color-foreground-muted)]">{block.description}</p>
+                      </div>
+                    ))}
+                  </motion.div>
+                );
+              }
+
+              if (item.kind === "flashcards") {
+                return (
+                  <motion.div
+                    key={item.id}
+                    layout
+                    initial="hidden"
+                    animate="visible"
+                    variants={fadeSlideUpItem}
+                    data-theme-surface
+                    className="max-w-[90%] self-start space-y-2 rounded-lg border p-3 text-sm"
+                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface-muted)" }}
+                  >
+                    <p className="font-medium text-[var(--color-foreground)]">{item.title}</p>
+                    <p className="text-xs text-[var(--color-foreground-muted)]">{item.cardCount} flashcards</p>
+                    <a
+                      href={`/api/ai/flashcard-generator/${item.id}/csv`}
+                      className="flex items-center gap-1 text-xs font-medium text-brand hover:underline"
+                    >
+                      <Download size={12} />
+                      Baixar CSV (Anki)
+                    </a>
+                  </motion.div>
+                );
+              }
+
+              if (item.kind === "adaptedText") {
+                return (
+                  <motion.div
+                    key={item.id}
+                    layout
+                    initial="hidden"
+                    animate="visible"
+                    variants={fadeSlideUpItem}
+                    data-theme-surface
+                    className="max-w-[90%] self-start space-y-2 rounded-lg border p-3 text-sm"
+                    style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface-muted)" }}
+                  >
+                    <p className="text-xs font-semibold text-[var(--color-foreground)]">
+                      Adaptado para {TARGET_LEVEL_LABEL[item.targetLevel]}
+                    </p>
+                    <p className="whitespace-pre-line text-[var(--color-foreground)]">{item.adaptedText}</p>
+                  </motion.div>
+                );
+              }
+
               return (
                 <motion.div
                   key={item.id}
@@ -538,27 +728,23 @@ export function ChatCard() {
                   className="max-w-[90%] self-start space-y-2 rounded-lg border p-3 text-sm"
                   style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-surface-muted)" }}
                 >
-                  <p className="font-medium text-[var(--color-foreground)]">{item.title}</p>
+                  <p className="text-xs font-semibold text-[var(--color-foreground)]">Linguagem simples</p>
+                  <p className="whitespace-pre-line text-[var(--color-foreground)]">{item.simpleLanguageText}</p>
+                  <p className="text-xs font-semibold text-[var(--color-foreground)]">
+                    Mapa mental — {item.mindMap.centralTopic}
+                  </p>
                   <ul className="list-inside list-disc text-xs text-[var(--color-foreground-muted)]">
-                    {item.bnccCompetencies.map((c, ci) => (
-                      <li key={ci}>{c}</li>
+                    {item.mindMap.branches.map((branch, bi) => (
+                      <li key={bi}>
+                        {branch.topic}
+                        <ul className="ml-4 list-inside list-[circle]">
+                          {branch.subtopics.map((sub, si) => (
+                            <li key={si}>{sub}</li>
+                          ))}
+                        </ul>
+                      </li>
                     ))}
                   </ul>
-                  {(
-                    [
-                      ["Introdução", item.introduction],
-                      ["Desenvolvimento", item.development],
-                      ["Atividade prática", item.practicalActivity],
-                      ["Avaliação", item.assessment],
-                    ] as const
-                  ).map(([label, block]) => (
-                    <div key={label}>
-                      <p className="text-xs font-semibold text-[var(--color-foreground)]">
-                        {label} ({block.durationMinutes} min)
-                      </p>
-                      <p className="text-xs text-[var(--color-foreground-muted)]">{block.description}</p>
-                    </div>
-                  ))}
                 </motion.div>
               );
             })}
@@ -678,23 +864,40 @@ export function ChatCard() {
           <textarea
             value={commandText}
             onChange={(e) => setCommandText(e.target.value)}
-            placeholder="Cole o conteúdo/texto-base (mínimo 50 caracteres)…"
+            placeholder={`Cole o conteúdo/texto-base (mínimo ${commandModal ? COMMAND_MIN_LENGTH[commandModal] : 20} caracteres)…`}
             rows={6}
             className="input-field w-full rounded-md px-3 py-2 text-sm"
           />
-          <input
-            type="text"
-            value={commandSubjectHint}
-            onChange={(e) => setCommandSubjectHint(e.target.value)}
-            placeholder="Disciplina/série (opcional)"
-            className="input-field h-10 w-full rounded-md px-3 text-sm"
-          />
+          {commandModal === "adaptar_texto" ? (
+            <select
+              value={commandTargetLevel}
+              onChange={(e) => setCommandTargetLevel(e.target.value as "FUNDAMENTAL" | "MEDIO" | "EJA")}
+              className="input-field h-10 w-full rounded-md px-3 text-sm"
+            >
+              {(["FUNDAMENTAL", "MEDIO", "EJA"] as const).map((level) => (
+                <option key={level} value={level}>
+                  {TARGET_LEVEL_LABEL[level]}
+                </option>
+              ))}
+            </select>
+          ) : commandModal !== "acessibilidade" ? (
+            <input
+              type="text"
+              value={commandSubjectHint}
+              onChange={(e) => setCommandSubjectHint(e.target.value)}
+              placeholder="Disciplina/série (opcional)"
+              className="input-field h-10 w-full rounded-md px-3 text-sm"
+            />
+          ) : null}
           {commandError && <p className="text-xs text-rose-500">{commandError}</p>}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => setCommandModal(null)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={status === "thinking" || commandText.trim().length < 50}>
+            <Button
+              type="submit"
+              disabled={status === "thinking" || !commandModal || commandText.trim().length < COMMAND_MIN_LENGTH[commandModal]}
+            >
               {status === "thinking" ? "Gerando…" : "Gerar"}
             </Button>
           </div>

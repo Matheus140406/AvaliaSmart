@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ClipboardCheck, Sparkles, ArrowRight } from "lucide-react";
 import { AnimatedCard, AnimatedList, AnimatedListItem } from "@/components/motion/AnimatedCard";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { AiSummaryCard } from "@/components/turmas/AiSummaryCard";
 
 interface ClassDetailData {
   class: { id: string; name: string; gradeLevel: string | null; shift: string | null; studentCount: number };
@@ -45,7 +46,10 @@ export function ClassDetail({ classId }: { classId: string }) {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="flex flex-col gap-4">
+      <AiSummaryCard classId={classId} />
+
+      <div className="grid gap-4 lg:grid-cols-2">
       {/* Coluna esquerda */}
       <div className="flex flex-col gap-4">
         <AnimatedCard
@@ -137,6 +141,7 @@ export function ClassDetail({ classId }: { classId: string }) {
           </ol>
         )}
       </AnimatedCard>
+      </div>
     </div>
   );
 }
