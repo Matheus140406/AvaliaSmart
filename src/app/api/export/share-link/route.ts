@@ -27,7 +27,12 @@ export const POST = withTenant(async (request, user) => {
     throw badRequest("Payload inválido.", parsed.error.flatten());
   }
 
-  const { token, expiresAt } = await createExportShareLink(user.tenantId, parsed.data.kind, parsed.data.params);
+  const { token, expiresAt } = await createExportShareLink(
+    user.tenantId,
+    parsed.data.kind,
+    parsed.data.params,
+    request.nextUrl.origin
+  );
   const url = `${request.nextUrl.origin}/api/export/download/${token}`;
 
   return apiSuccess({ url, expiresAt: expiresAt.toISOString() }, 201);

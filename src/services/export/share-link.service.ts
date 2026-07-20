@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { badRequest, notFound } from "@/lib/http/errors";
+import { dispatchNotification } from "@/services/notification.service";
 
 /**
  * Link de download temporário/assinado pra "Compartilhar no WhatsApp" (ver
@@ -33,7 +34,9 @@ const KIND_REQUIRED_PARAMS: Record<ExportShareLinkKind, string[]> = {
 export async function createExportShareLink(
   tenantId: string,
   kind: ExportShareLinkKind,
-  params: Record<string, string>
+  params: Record<string, string>,
+  /** Origin da requisição (`request.nextUrl.origin`) — só usado pra montar a URL completa do aviso de "boletim disponível" (ver notifyGuardiansBoletimDisponivel abaixo); os demais kinds ignoram. */
+  origin?: string
 ): Promise<{ token: string; expiresAt: Date }> {
   const required = KIND_REQUIRED_PARAMS[kind];
   for (const key of required) {
@@ -47,7 +50,47 @@ export async function createExportShareLink(
     data: { token, tenantId, kind, params, expiresAt },
   });
 
+  if (kind === "boletim-portal" && origin) {
+    const url = `${origin}/api/export/download/${token}`;
+    await notifyGuardiansBoletimDisponivel(tenantId, params.enrollmentId, url).catch((err) => {
+      // Best-effort — o link já foi criado e é devolvido normalmente pro
+      // professor mesmo se o aviso ao responsável falhar (mesmo princípio
+      // de "e-mail nunca derruba o fluxo principal" usado em todo o app).
+      console.error("[share-link] falha ao notificar responsável (boletim-portal):", err);
+    });
+  }
+
   return { token, expiresAt };
+}
+
+/**
+ * Trigger BOLETIM_DISPONIVEL — dispara quando um link de boletim de longa
+ * duração é gerado (ver comentário no topo do arquivo sobre boletim-portal).
+ * Só entra em ação se a escola tiver um NotificationTemplate ativo pro
+ * trigger E o aluno tiver responsável com e-mail cadastrado — sem os dois,
+ * fica em silêncio (motor de notificações é opt-in por template, não
+ * inventa e-mail novo sem configuração — ver notification.service.ts).
+ */
+async function notifyGuardiansBoletimDisponivel(tenantId: string, enrollmentId: string, url: string): Promise<void> {
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { id: enrollmentId },
+    include: { student: { include: { guardians: { include: { guardian: true } } } }, class: true },
+  });
+  if (!enrollment) return;
+
+  const guardianEmails = enrollment.student.guardians
+    .map((sg) => sg.guardian.email)
+    .filter((email): email is string => Boolean(email));
+
+  for (const email of guardianEmails) {
+    await dispatchNotification({
+      tenantId,
+      trigger: "BOLETIM_DISPONIVEL",
+      to: email,
+      studentId: enrollment.studentId,
+      vars: { nome_aluno: enrollment.student.name, turma: enrollment.class.name, link: url },
+    });
+  }
 }
 
 export interface RedeemedExportShareLink {
