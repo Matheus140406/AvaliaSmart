@@ -112,6 +112,7 @@ model Tenant {
   paymentReceipts PaymentReceipt[]
   exportShareLinks ExportShareLink[]
   evaluationTypes  EvaluationTypeOption[]
+  observationTemplates ObservationTemplate[]
 
   @@index([slug])
 }
@@ -244,6 +245,7 @@ model Membership {
   auditLogs        AuditLog[]
   invitesSent      Invite[]
   aiUsageLogs      AiUsageLog[]
+  observationTemplates ObservationTemplate[]
 
   @@unique([userId, tenantId])
   @@index([tenantId, role])
@@ -1021,4 +1023,25 @@ model RiskAlertLog {
 enum RiskAlertType {
   MEDIA_BAIXA
   FREQUENCIA_BAIXA
+}
+
+// -------------------------------------------------------------------------------------
+// BANCO DE OBSERVAÇÕES REUTILIZÁVEIS
+// -------------------------------------------------------------------------------------
+
+/// Snippet de observação de boletim salvo pelo professor pra reusar em
+/// alunos parecidos — desacoplado de `AiObservationSuggestion` de propósito:
+/// um modelo salvo não fica preso ao aluno/período onde foi gerado
+/// originalmente, é texto livre reutilizável em qualquer contexto.
+model ObservationTemplate {
+  id           String   @id @default(cuid())
+  tenantId     String
+  membershipId String
+  text         String
+  createdAt    DateTime @default(now())
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
 }

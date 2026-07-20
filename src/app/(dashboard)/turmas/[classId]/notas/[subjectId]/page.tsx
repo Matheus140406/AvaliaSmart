@@ -7,6 +7,7 @@ import { toGradeCellValues, toGradeConfigDTO, toStudentRow } from "@/lib/grades/
 import GradeGridConnected from "@/components/grade-grid/GradeGridConnected";
 import { AnimatedList, AnimatedListItem } from "@/components/motion/AnimatedCard";
 import { ShareWhatsAppButton } from "@/components/export/ShareWhatsAppButton";
+import { ObservationSuggestionButton } from "@/components/turmas/ObservationSuggestionButton";
 
 interface PageProps {
   params: Promise<{ classId: string; subjectId: string }>;
@@ -130,6 +131,7 @@ export default async function NotasPage({ params, searchParams }: PageProps) {
                   Baixar boletim (PDF)
                 </a>
                 <ShareWhatsAppButton kind="boletim-pdf" params={{ enrollmentId: e.id }} className="!px-2 !py-1 text-[11px]" />
+                <ObservationSuggestionButton studentId={e.student.id} studentName={e.student.name} termId={term.id} />
               </div>
             </AnimatedListItem>
           ))}
