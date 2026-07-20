@@ -1,0 +1,44 @@
+# CI de gate — a Vercel continua fazendo build/deploy por push; este workflow
+# só impede que código quebrado avance (typecheck, lint, testes, schema).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    env:
+      # Dummies: `prisma generate` (postinstall) e `prisma validate` precisam
+      # das envs declaradas em prisma.config.ts, mas nenhum passo abre
+      # conexão real com banco.
+      DATABASE_URL: "postgresql://ci:ci@localhost:6543/ci"
+      DIRECT_URL: "postgresql://ci:ci@localhost:5432/ci"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Validar schema Prisma
+        run: npx prisma validate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Testes
+        run: npm test
+
+      - name: Auditoria de dependências (informativo)
+        run: npm audit --audit-level=high
+        continue-on-error: true
