@@ -9,6 +9,7 @@ import { Check, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCard } from "@/components/motion/AnimatedCard";
 import { OneIcon } from "@/components/one/OneIcon";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 
 /**
  * Validação client-side ESPELHA as regras do servidor (register/route.ts) —
@@ -106,6 +107,9 @@ function RegistrarForm() {
             onChange={(e) => setName(e.target.value)}
             required
             minLength={2}
+            autoComplete="name"
+            autoFocus
+            disabled={loading}
             className="input-field h-10 w-full rounded-md px-3 text-sm"
           />
           <input
@@ -114,23 +118,25 @@ function RegistrarForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            autoComplete="email"
+            disabled={loading}
             className="input-field h-10 w-full rounded-md px-3 text-sm"
           />
-          <input
-            type="password"
+          <PasswordInput
             placeholder="Senha"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={setPassword}
             required
-            className="input-field h-10 w-full rounded-md px-3 text-sm"
+            autoComplete="new-password"
+            disabled={loading}
           />
-          <input
-            type="password"
+          <PasswordInput
             placeholder="Confirmar senha"
             value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
+            onChange={setConfirm}
             required
-            className="input-field h-10 w-full rounded-md px-3 text-sm"
+            autoComplete="new-password"
+            disabled={loading}
           />
 
           <ul className="flex flex-wrap gap-x-3 gap-y-1">
@@ -168,6 +174,7 @@ function RegistrarForm() {
           type="button"
           variant="secondary"
           onClick={() => signIn("google", { callbackUrl })}
+          disabled={loading}
           className="w-full justify-center"
         >
           Continuar com Google
