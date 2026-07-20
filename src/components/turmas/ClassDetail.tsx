@@ -7,6 +7,7 @@ import { AnimatedCard, AnimatedList, AnimatedListItem } from "@/components/motio
 import { Skeleton } from "@/components/ui/Skeleton";
 import { AiSummaryCard } from "@/components/turmas/AiSummaryCard";
 import { RiskPredictionPanel } from "@/components/turmas/RiskPredictionPanel";
+import { SubstituteBriefingPanel } from "@/components/turmas/SubstituteBriefingPanel";
 import { ClassComparisonChart } from "@/components/turmas/ClassComparisonChart";
 import { ParentCommunicationButton } from "@/components/turmas/ParentCommunicationButton";
 
@@ -65,6 +66,7 @@ export function ClassDetail({ classId }: { classId: string }) {
       <AiSummaryCard classId={classId} />
       <ClassComparisonChart classId={classId} />
       <RiskPredictionPanel classId={classId} />
+      <SubstituteBriefingPanel classId={classId} />
 
       <div className="grid gap-4 lg:grid-cols-2">
       {/* Coluna esquerda */}

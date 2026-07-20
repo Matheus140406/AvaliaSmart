@@ -787,6 +787,7 @@ enum AiFeature {
   DESCRICAO_IMAGEM
   PREDICAO_RISCO
   COMUNICADO_PAIS
+  RESUMO_SUBSTITUTO
 }
 
 /// Uma linha por chamada de IA (sucesso ou falha) — serve DOIS propósitos ao
