@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/check-consecutive-absences",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/check-risk-alerts",
+      "schedule": "0 9 * * *"
     }
   ]
 }

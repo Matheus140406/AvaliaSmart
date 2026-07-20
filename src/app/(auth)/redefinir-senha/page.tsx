@@ -7,6 +7,7 @@ import { Check, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedCard } from "@/components/motion/AnimatedCard";
 import { OneIcon } from "@/components/one/OneIcon";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 
 function CardShell({ children }: { children: React.ReactNode }) {
   return (
@@ -95,21 +96,21 @@ function RedefinirSenhaForm() {
       <h1 className="mb-6 text-lg font-semibold text-[var(--color-foreground)]">Criar nova senha</h1>
 
       <form onSubmit={handleSubmit} className="space-y-3 text-left">
-        <input
-          type="password"
+        <PasswordInput
           placeholder="Nova senha"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={setPassword}
           required
-          className="input-field h-10 w-full rounded-md px-3 text-sm"
+          autoComplete="new-password"
+          disabled={loading}
         />
-        <input
-          type="password"
+        <PasswordInput
           placeholder="Confirmar nova senha"
           value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
+          onChange={setConfirm}
           required
-          className="input-field h-10 w-full rounded-md px-3 text-sm"
+          autoComplete="new-password"
+          disabled={loading}
         />
 
         <ul className="flex flex-wrap gap-x-3 gap-y-1">

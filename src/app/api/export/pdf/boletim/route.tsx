@@ -3,7 +3,7 @@ import { z } from "zod";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { prisma } from "@/lib/prisma";
 import { withTenant } from "@/lib/with-tenant";
-import { computeWeightedAverage, classifyAverage } from "@/lib/grades/calculations";
+import { computeWeightedAverage, classifyAverage, computeFinalAverage } from "@/lib/grades/calculations";
 import { BoletimDocument, type BoletimData } from "@/components/pdf/BoletimDocument";
 import { badRequest, notFound, forbidden } from "@/lib/http/errors";
 import { WRITE_ROLES } from "@/lib/roles";
@@ -80,11 +80,11 @@ export async function buildBoletimPdfBuffer(tenantId: string, enrollmentId: stri
     });
 
     // Média final = média aritmética das médias bimestrais/trimestrais já
-    // fechadas — o padrão mais comum de boletim brasileiro. Se preferir
-    // ponderar por período de forma diferente, é só trocar essa conta.
-    const filledAverages = termAverages.filter((t) => t.average !== null).map((t) => t.average as number);
-    const finalAverage =
-      filledAverages.length > 0 ? filledAverages.reduce((sum, v) => sum + v, 0) / filledAverages.length : null;
+    // fechadas — o padrão mais comum de boletim brasileiro (ver
+    // computeFinalAverage em lib/grades/calculations.ts, compartilhada com a
+    // Ata de Resultados Finais pra nunca divergir).
+    const finalAverage = computeFinalAverage(termAverages);
+    const filledAverages = termAverages.filter((t) => t.average !== null);
 
     const subjectAttendances = attendances.filter((a) => a.classSubjectId === cs.id);
     const attendancePct =

@@ -8,6 +8,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { AnimatedCard } from "@/components/motion/AnimatedCard";
 import { OneIcon } from "@/components/one/OneIcon";
+import { PasswordInput } from "@/components/auth/PasswordInput";
 
 /**
  * Retrofit desta tela pro design system real do projeto (tokens de tema,
@@ -95,15 +96,18 @@ function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            autoComplete="email"
+            autoFocus
+            disabled={loading}
             className="input-field h-10 w-full rounded-md px-3 text-sm"
           />
-          <input
-            type="password"
+          <PasswordInput
             placeholder="Senha"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={setPassword}
             required
-            className="input-field h-10 w-full rounded-md px-3 text-sm"
+            autoComplete="current-password"
+            disabled={loading}
           />
           {error && <p className="text-xs text-rose-500">{error}</p>}
           <Button type="submit" variant="gradient" disabled={loading} className="w-full justify-center">
@@ -128,6 +132,7 @@ function LoginForm() {
           type="button"
           variant="secondary"
           onClick={() => signIn("google", { callbackUrl })}
+          disabled={loading}
           className="w-full justify-center"
         >
           Continuar com Google

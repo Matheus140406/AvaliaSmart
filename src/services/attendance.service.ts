@@ -4,6 +4,7 @@ import { findClassSubjectWithClass } from "@/repositories/class-subject.reposito
 import {
   findActiveEnrollmentsWithAttendance,
   findEnrollmentById,
+  findMonthlyAttendance,
   upsertAttendance,
 } from "@/repositories/attendance.repository";
 
@@ -54,6 +55,94 @@ export async function getAttendanceSheet(params: GetAttendanceSheetParams) {
       justified: e.attendances[0]?.justified ?? false,
       recorded: e.attendances.length > 0,
     })),
+  };
+}
+
+export interface GetMonthlyAttendanceReportParams {
+  tenantId: string;
+  role: MembershipRole;
+  membershipId: string;
+  classSubjectId: string;
+  month: string; // "YYYY-MM"
+}
+
+export interface MonthlyAttendanceReport {
+  className: string;
+  subjectName: string;
+  monthLabel: string;
+  days: number[]; // dias do mês com pelo menos uma chamada lançada, em ordem
+  students: {
+    studentName: string;
+    registrationCode: string | null;
+    marksByDay: Record<number, "P" | "F" | "J">;
+    totalPresences: number;
+    totalAbsences: number;
+    attendancePct: number;
+  }[];
+}
+
+const MONTH_REGEX = /^\d{4}-\d{2}$/;
+
+/**
+ * Export "papel" da lista de chamada — mesmo princípio do Mapa de Notas
+ * (`mapa-notas`): um documento por mês, uma linha por aluno, uma coluna por
+ * DIA que teve chamada lançada (não todo dia do calendário — evita colunas
+ * vazias em dias sem aula). P = presente, F = falta, J = falta justificada.
+ */
+export async function getMonthlyAttendanceReport(params: GetMonthlyAttendanceReportParams): Promise<MonthlyAttendanceReport> {
+  const classSubject = await findClassSubjectWithClass(params.classSubjectId);
+  if (!classSubject || classSubject.class.tenantId !== params.tenantId) {
+    throw notFound("Turma/disciplina não encontrada.");
+  }
+  if (params.role === "PROFESSOR" && classSubject.teacherId !== params.membershipId) {
+    throw forbidden("Você não leciona essa disciplina/turma.");
+  }
+  if (!MONTH_REGEX.test(params.month)) {
+    throw badRequest("Mês inválido — use o formato YYYY-MM.");
+  }
+
+  const [year, monthNum] = params.month.split("-").map(Number);
+  const startDate = new Date(Date.UTC(year, monthNum - 1, 1));
+  const endDate = new Date(Date.UTC(year, monthNum, 0, 23, 59, 59));
+
+  const enrollments = await findMonthlyAttendance(classSubject.classId, params.classSubjectId, startDate, endDate);
+
+  const daySet = new Set<number>();
+  for (const e of enrollments) {
+    for (const a of e.attendances) daySet.add(a.date.getUTCDate());
+  }
+  const days = [...daySet].sort((a, b) => a - b);
+
+  const students = enrollments.map((e) => {
+    const marksByDay: Record<number, "P" | "F" | "J"> = {};
+    let totalPresences = 0;
+    let totalAbsences = 0;
+    for (const a of e.attendances) {
+      const mark = a.present ? "P" : a.justified ? "J" : "F";
+      marksByDay[a.date.getUTCDate()] = mark;
+      if (a.present) totalPresences++;
+      else totalAbsences++;
+    }
+    const totalRecorded = totalPresences + totalAbsences;
+    const attendancePct = totalRecorded > 0 ? (totalPresences / totalRecorded) * 100 : 100;
+    return {
+      studentName: e.student.name,
+      registrationCode: e.student.registrationCode,
+      marksByDay,
+      totalPresences,
+      totalAbsences,
+      attendancePct,
+    };
+  });
+
+  const monthLabel = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(startDate);
+
+  return {
+    className: classSubject.class.name,
+    subjectName: classSubject.subject.name,
+    monthLabel: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
+    days,
+    students,
   };
 }
 

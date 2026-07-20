@@ -112,6 +112,7 @@ model Tenant {
   paymentReceipts PaymentReceipt[]
   exportShareLinks ExportShareLink[]
   evaluationTypes  EvaluationTypeOption[]
+  observationTemplates ObservationTemplate[]
 
   @@index([slug])
 }
@@ -244,6 +245,7 @@ model Membership {
   auditLogs        AuditLog[]
   invitesSent      Invite[]
   aiUsageLogs      AiUsageLog[]
+  observationTemplates ObservationTemplate[]
 
   @@unique([userId, tenantId])
   @@index([tenantId, role])
@@ -784,6 +786,8 @@ enum AiFeature {
   ACESSIBILIDADE
   DESCRICAO_IMAGEM
   PREDICAO_RISCO
+  COMUNICADO_PAIS
+  RESUMO_SUBSTITUTO
 }
 
 /// Uma linha por chamada de IA (sucesso ou falha) — serve DOIS propósitos ao
@@ -998,4 +1002,48 @@ model RateLimitEvent {
   createdAt DateTime @default(now())
 
   @@index([key, createdAt])
+}
+
+// -------------------------------------------------------------------------------------
+// ALERTA DE RISCO (aviso proativo, baseado em regra — sem IA)
+// -------------------------------------------------------------------------------------
+
+/// Dedup de alerta de risco por (matrícula, período, tipo) — mesmo padrão do
+/// AbsenceAlertLog: sem isso, o cron diário reenviaria o mesmo aviso todo
+/// dia enquanto a condição persistir. Uma linha aqui = "já avisamos sobre
+/// isso neste período", válida até o período (Term) trocar.
+model RiskAlertLog {
+  id           String   @id @default(cuid())
+  enrollmentId String
+  termId       String
+  riskType     RiskAlertType
+  createdAt    DateTime @default(now())
+
+  @@unique([enrollmentId, termId, riskType])
+}
+
+enum RiskAlertType {
+  MEDIA_BAIXA
+  FREQUENCIA_BAIXA
+}
+
+// -------------------------------------------------------------------------------------
+// BANCO DE OBSERVAÇÕES REUTILIZÁVEIS
+// -------------------------------------------------------------------------------------
+
+/// Snippet de observação de boletim salvo pelo professor pra reusar em
+/// alunos parecidos — desacoplado de `AiObservationSuggestion` de propósito:
+/// um modelo salvo não fica preso ao aluno/período onde foi gerado
+/// originalmente, é texto livre reutilizável em qualquer contexto.
+model ObservationTemplate {
+  id           String   @id @default(cuid())
+  tenantId     String
+  membershipId String
+  text         String
+  createdAt    DateTime @default(now())
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
 }

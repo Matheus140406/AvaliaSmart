@@ -7,6 +7,7 @@ import { motion } from "motion/react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
 import { MessageCircle, Upload, CreditCard, Users, ClipboardCheck, Award, LayoutDashboard, Search, Sparkles, Plus } from "lucide-react";
 import { AnimatedCard, AnimatedList, AnimatedListItem } from "@/components/motion/AnimatedCard";
+import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist";
 import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -119,6 +120,8 @@ function PainelContent({ data }: { data: DashboardSummary }) {
     <div className="grid gap-4 lg:grid-cols-3">
       {/* Hero da One */}
       <DashboardHero attentionCount={data.attentionPoints.length} overallAverage={data.metrics.overallAverage} className="lg:col-span-3" />
+
+      <OnboardingChecklist classCount={data.metrics.classCount} studentCount={data.metrics.studentCount} />
 
       {/* Métricas */}
       <div className="grid grid-cols-2 gap-4 lg:col-span-3 lg:grid-cols-4">

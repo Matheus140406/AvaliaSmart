@@ -58,6 +58,9 @@ export default function EsqueciSenhaPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
+                autoFocus
+                disabled={loading}
                 className="input-field h-10 w-full rounded-md px-3 text-sm"
               />
               <Button type="submit" disabled={loading} className="w-full justify-center">

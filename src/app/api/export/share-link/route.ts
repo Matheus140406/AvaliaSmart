@@ -12,7 +12,7 @@ import { createExportShareLink } from "@/services/export/share-link.service";
  * não dá pra colar a URL delas cruas num link de WhatsApp).
  */
 const bodySchema = z.object({
-  kind: z.enum(["dashboard-pdf", "dashboard-excel", "boletim-pdf", "receipt-pdf"]),
+  kind: z.enum(["dashboard-pdf", "dashboard-excel", "boletim-pdf", "receipt-pdf", "boletim-portal"]),
   params: z.record(z.string(), z.string()).default({}),
 });
 
@@ -27,7 +27,12 @@ export const POST = withTenant(async (request, user) => {
     throw badRequest("Payload inválido.", parsed.error.flatten());
   }
 
-  const { token, expiresAt } = await createExportShareLink(user.tenantId, parsed.data.kind, parsed.data.params);
+  const { token, expiresAt } = await createExportShareLink(
+    user.tenantId,
+    parsed.data.kind,
+    parsed.data.params,
+    request.nextUrl.origin
+  );
   const url = `${request.nextUrl.origin}/api/export/download/${token}`;
 
   return apiSuccess({ url, expiresAt: expiresAt.toISOString() }, 201);

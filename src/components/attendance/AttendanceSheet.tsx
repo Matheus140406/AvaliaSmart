@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { ChevronLeft, ChevronRight, UserX, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, UserX, Plus, CheckCheck, FileText } from "lucide-react";
 import { AnimatedList, AnimatedListItem } from "@/components/motion/AnimatedCard";
 import { SkeletonText } from "@/components/ui/Skeleton";
 import { Button } from "@/components/ui/button";
@@ -129,6 +129,16 @@ export function AttendanceSheet({ classId, classSubjectId }: { classId: string; 
     debounceTimers.current.set(enrollmentId, timer);
   };
 
+  /** "Marcar todos presentes" — só afeta quem ainda não tem chamada lançada nesta data (`recorded === false`), pra não sobrescrever uma falta/justificada já registrada por engano. Side effect (persist) fica FORA do updater de setState, que precisa continuar puro. */
+  const handleMarkAllPresent = () => {
+    if (!students) return;
+    const targets = students.filter((s) => !s.recorded);
+    for (const s of targets) persist(s.enrollmentId, true, false);
+    setStudents((prev) =>
+      prev ? prev.map((s) => (s.recorded ? s : { ...s, present: true, justified: false, recorded: true })) : prev
+    );
+  };
+
   const handleAddStudent = async (e: FormEvent) => {
     e.preventDefault();
     setAdding(true);
@@ -223,10 +233,38 @@ export function AttendanceSheet({ classId, classSubjectId }: { classId: string; 
           className="input-field h-9 flex-1 rounded-md px-3 text-sm sm:max-w-[220px]"
         />
 
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={handleMarkAllPresent}
+          disabled={!students || students.every((s) => s.recorded)}
+          className="gap-1.5"
+          title="Marca como presente só quem ainda não teve chamada lançada nesta data"
+        >
+          <CheckCheck size={14} /> Marcar todos presentes
+        </Button>
+
         <Button type="button" variant="secondary" onClick={() => setShowAddForm((v) => !v)} className="gap-1.5">
           <Plus size={14} /> Cadastrar aluno
         </Button>
+
+        <a
+          href={`/api/export/pdf/lista-chamada?classSubjectId=${classSubjectId}&month=${date.slice(0, 7)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-xs font-medium text-brand hover:underline"
+        >
+          <FileText size={13} />
+          Exportar chamada do mês (PDF)
+        </a>
       </div>
+
+      {visibleStudents && visibleStudents.length > 0 && (
+        <p className="text-xs text-[var(--color-foreground-muted)]">
+          {visibleStudents.filter((s) => s.present).length} presentes · {visibleStudents.filter((s) => !s.present).length} ausentes ·{" "}
+          {visibleStudents.length} no total
+        </p>
+      )}
 
       {showAddForm && (
         <form

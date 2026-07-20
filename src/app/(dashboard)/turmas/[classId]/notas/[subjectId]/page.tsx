@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronRight, Upload } from "lucide-react";
+import { ChevronRight, Upload, FileText } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { toGradeCellValues, toGradeConfigDTO, toStudentRow } from "@/lib/grades/serialize";
 import GradeGridConnected from "@/components/grade-grid/GradeGridConnected";
 import { AnimatedList, AnimatedListItem } from "@/components/motion/AnimatedCard";
 import { ShareWhatsAppButton } from "@/components/export/ShareWhatsAppButton";
+import { GuardianPortalLinkButton } from "@/components/export/GuardianPortalLinkButton";
+import { ObservationSuggestionButton } from "@/components/turmas/ObservationSuggestionButton";
+import { ParentCommunicationButton } from "@/components/turmas/ParentCommunicationButton";
 
 interface PageProps {
   params: Promise<{ classId: string; subjectId: string }>;
@@ -79,6 +82,15 @@ export default async function NotasPage({ params, searchParams }: PageProps) {
           <p className="text-sm text-[var(--color-foreground-muted)]">{term.name}</p>
         </div>
         <div className="flex shrink-0 items-center gap-4">
+          <a
+            href={`/api/export/pdf/mapa-notas?classSubjectId=${classSubject.id}&termId=${term.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-xs font-medium text-brand hover:underline"
+          >
+            <FileText size={14} />
+            Mapa de notas
+          </a>
           <Link
             href={`/importar?classId=${classId}&classSubjectId=${classSubject.id}&termId=${term.id}`}
             className="flex items-center gap-1 text-xs font-medium text-brand hover:underline"
@@ -130,6 +142,9 @@ export default async function NotasPage({ params, searchParams }: PageProps) {
                   Baixar boletim (PDF)
                 </a>
                 <ShareWhatsAppButton kind="boletim-pdf" params={{ enrollmentId: e.id }} className="!px-2 !py-1 text-[11px]" />
+                <GuardianPortalLinkButton enrollmentId={e.id} />
+                <ObservationSuggestionButton studentId={e.student.id} studentName={e.student.name} termId={term.id} />
+                <ParentCommunicationButton scopeType="STUDENT" scopeId={e.student.id} scopeLabel={e.student.name} />
               </div>
             </AnimatedListItem>
           ))}

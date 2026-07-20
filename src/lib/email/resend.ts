@@ -101,6 +101,22 @@ export function consecutiveAbsencesEmail(params: {
   };
 }
 
+export function riskAlertEmail(params: {
+  studentName: string;
+  className: string;
+  reasons: string[];
+}) {
+  return {
+    subject: `${params.studentName} está em risco de reprovação — ${params.className}`,
+    html: `
+      <p><strong>${params.studentName}</strong> (${params.className}) apresenta sinal de risco:</p>
+      <ul>${params.reasons.map((r) => `<li>${r}</li>`).join("")}</ul>
+      <p>Vale a pena agir antes do bimestre fechar.</p>
+      <p style="color:#737373;font-size:12px;margin-top:24px;">AvaliaSmart</p>
+    `,
+  };
+}
+
 export function essayGradedEmail(params: {
   studentLabel: string | null;
   gradedBy: "ai" | "human";
