@@ -7,6 +7,7 @@ import { AnimatedCard, AnimatedList, AnimatedListItem } from "@/components/motio
 import { Skeleton } from "@/components/ui/Skeleton";
 import { AiSummaryCard } from "@/components/turmas/AiSummaryCard";
 import { RiskPredictionPanel } from "@/components/turmas/RiskPredictionPanel";
+import { ClassComparisonChart } from "@/components/turmas/ClassComparisonChart";
 
 interface ClassDetailData {
   class: { id: string; name: string; gradeLevel: string | null; shift: string | null; studentCount: number };
@@ -49,6 +50,7 @@ export function ClassDetail({ classId }: { classId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <AiSummaryCard classId={classId} />
+      <ClassComparisonChart classId={classId} />
       <RiskPredictionPanel classId={classId} />
 
       <div className="grid gap-4 lg:grid-cols-2">
