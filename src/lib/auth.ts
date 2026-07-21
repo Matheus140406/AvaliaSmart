@@ -21,6 +21,29 @@ import type { MembershipRole } from "@/types/auth";
  *   as rotas escritas contra o stub anterior não precisam mudar.
  */
 
+/**
+ * Auditoria de tentativa de login (sucesso ou falha) — gap documentado desde
+ * o hardening original ("eventos de login/falha não são auditados").
+ * Rota pública, sem tenant/membership: fica só o e-mail em `newValue` (nunca
+ * a senha) + IP no campo próprio de `AuditLog`. Best-effort: uma falha ao
+ * gravar a auditoria nunca deve travar (nem derrubar) o login em si.
+ */
+async function logLoginAttempt(params: { success: boolean; userId?: string; email: string; ip: string }): Promise<void> {
+  await prisma.auditLog
+    .create({
+      data: {
+        action: params.success ? "LOGIN_SUCCESS" : "LOGIN_FAILURE",
+        model: "User",
+        recordId: params.userId ?? null,
+        ip: params.ip,
+        newValue: { email: params.email },
+      },
+    })
+    .catch((err) => {
+      console.error("[auth] falha ao registrar auditoria de login:", err);
+    });
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
@@ -40,24 +63,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           typeof credentials?.password === "string" ? credentials.password : undefined;
         if (!email || !password) return null;
 
+        const ip = clientIpFromHeaders(request.headers);
+
         // Freio anti brute force / credential stuffing, persistido em banco
         // (ver lib/rate-limit.ts). Quando estoura, devolve `null` — a MESMA
         // resposta de credencial errada, de propósito: um atacante não pode
         // distinguir "senha errada" de "bloqueado", nem usar o bloqueio como
         // oráculo de quais e-mails existem.
-        const ip = clientIpFromHeaders(request.headers);
         const [ipAllowed, emailAllowed] = await Promise.all([
           consumeRateLimit(`login:ip:${ip}`, 20, 15 * 60 * 1000),
           consumeRateLimit(`login:email:${email.trim().toLowerCase()}`, 10, 15 * 60 * 1000),
         ]);
-        if (!ipAllowed || !emailAllowed) return null;
+        if (!ipAllowed || !emailAllowed) {
+          await logLoginAttempt({ success: false, email, ip });
+          return null;
+        }
 
         const user = await prisma.user.findUnique({ where: { email } });
-        if (!user?.passwordHash) return null; // conta só-Google, sem senha local
+        if (!user?.passwordHash) {
+          await logLoginAttempt({ success: false, email, ip }); // conta só-Google, sem senha local
+          return null;
+        }
 
         const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
+        if (!valid) {
+          await logLoginAttempt({ success: false, userId: user.id, email, ip });
+          return null;
+        }
 
+        await logLoginAttempt({ success: true, userId: user.id, email, ip });
         return { id: user.id, email: user.email, name: user.name, image: user.image };
       },
     }),
