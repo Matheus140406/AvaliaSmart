@@ -128,14 +128,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, account, trigger, session }) {
       if (user) {
         token.userId = user.id;
+
+        // O Credentials provider já valida o segundo fator DENTRO de
+        // `authorize()` antes de devolver o usuário — chegar aqui por esse
+        // provider já significa "MFA ok" (ou conta sem MFA). Qualquer OUTRO
+        // provider (Google) nunca passa por `authorize()`, então uma conta
+        // com MFA ativado ficaria completamente exposta por ali sem essa
+        // checagem — `mfaPending` é o que faz o proxy.ts barrar o acesso até
+        // o segundo fator ser confirmado em /mfa-verificar.
+        if (account?.provider === "credentials") {
+          token.mfaPending = false;
+        } else {
+          const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { mfaEnabled: true } });
+          token.mfaPending = dbUser?.mfaEnabled ?? false;
+        }
       }
 
       // Disparado pelo client via `update({ activeTenantId })` — ver WorkspaceSwitcher.
       if (trigger === "update" && session && "activeTenantId" in session) {
         token.activeTenantId = (session as { activeTenantId: string | null }).activeTenantId;
+      }
+
+      // Disparado pelo client via `update({ mfaVerified: true })` — ver
+      // /mfa-verificar — depois de validar o segundo fator com a sessão OAuth
+      // já aberta (não com senha, que essa conta pode nem ter).
+      if (trigger === "update" && session && "mfaVerified" in session && (session as { mfaVerified: boolean }).mfaVerified) {
+        token.mfaPending = false;
       }
 
       // Sempre que houver (userId, activeTenantId), resolve a Membership de novo —
@@ -164,6 +185,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.activeTenantId = token.activeTenantId ?? null;
       session.membershipId = token.membershipId ?? null;
       session.role = token.role ?? null;
+      session.mfaPending = token.mfaPending ?? false;
       return session;
     },
   },
