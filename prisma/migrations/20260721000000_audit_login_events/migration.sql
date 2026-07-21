@@ -1,0 +1,3 @@
+-- AlterEnum
+ALTER TYPE "AuditAction" ADD VALUE 'LOGIN_SUCCESS';
+ALTER TYPE "AuditAction" ADD VALUE 'LOGIN_FAILURE';
