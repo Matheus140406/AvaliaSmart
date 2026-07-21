@@ -1,11 +1,21 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { consumeRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
+import { verifyMfaChallenge } from "@/services/mfa.service";
 import type { MembershipRole } from "@/types/auth";
+
+/**
+ * Sinaliza pro client (via `result.code` do `signIn(..., {redirect:false})`)
+ * que a senha bateu mas falta o segundo fator — o form de login troca pra
+ * etapa 2 (código TOTP/recuperação) em vez de mostrar "credenciais inválidas".
+ */
+class MfaRequiredError extends CredentialsSignin {
+  code = "mfa-required";
+}
 
 /**
  * Login único + seletor de workspace (Notion/Slack-style).
@@ -56,11 +66,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "E-mail", type: "email" },
         password: { label: "Senha", type: "password" },
+        totpCode: { label: "Código de autenticação", type: "text" },
+        recoveryCode: { label: "Código de recuperação", type: "text" },
       },
       authorize: async (credentials, request) => {
         const email = typeof credentials?.email === "string" ? credentials.email : undefined;
         const password =
           typeof credentials?.password === "string" ? credentials.password : undefined;
+        const totpCode = typeof credentials?.totpCode === "string" && credentials.totpCode ? credentials.totpCode : undefined;
+        const recoveryCode =
+          typeof credentials?.recoveryCode === "string" && credentials.recoveryCode ? credentials.recoveryCode : undefined;
         if (!email || !password) return null;
 
         const ip = clientIpFromHeaders(request.headers);
@@ -91,20 +106,57 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
+        if (user.mfaEnabled) {
+          if (!totpCode && !recoveryCode) {
+            // Senha certa, mas ainda falta o segundo fator — não é "credencial
+            // errada" (não audita como falha), é uma etapa normal do fluxo.
+            throw new MfaRequiredError();
+          }
+          const mfaValid = await verifyMfaChallenge(
+            { id: user.id, mfaSecretEncrypted: user.mfaSecretEncrypted, mfaRecoveryCodes: user.mfaRecoveryCodes },
+            { totpCode, recoveryCode, ip }
+          );
+          if (!mfaValid) {
+            await logLoginAttempt({ success: false, userId: user.id, email, ip });
+            return null;
+          }
+        }
+
         await logLoginAttempt({ success: true, userId: user.id, email, ip });
         return { id: user.id, email: user.email, name: user.name, image: user.image };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, account, trigger, session }) {
       if (user) {
         token.userId = user.id;
+
+        // O Credentials provider já valida o segundo fator DENTRO de
+        // `authorize()` antes de devolver o usuário — chegar aqui por esse
+        // provider já significa "MFA ok" (ou conta sem MFA). Qualquer OUTRO
+        // provider (Google) nunca passa por `authorize()`, então uma conta
+        // com MFA ativado ficaria completamente exposta por ali sem essa
+        // checagem — `mfaPending` é o que faz o proxy.ts barrar o acesso até
+        // o segundo fator ser confirmado em /mfa-verificar.
+        if (account?.provider === "credentials") {
+          token.mfaPending = false;
+        } else {
+          const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { mfaEnabled: true } });
+          token.mfaPending = dbUser?.mfaEnabled ?? false;
+        }
       }
 
       // Disparado pelo client via `update({ activeTenantId })` — ver WorkspaceSwitcher.
       if (trigger === "update" && session && "activeTenantId" in session) {
         token.activeTenantId = (session as { activeTenantId: string | null }).activeTenantId;
+      }
+
+      // Disparado pelo client via `update({ mfaVerified: true })` — ver
+      // /mfa-verificar — depois de validar o segundo fator com a sessão OAuth
+      // já aberta (não com senha, que essa conta pode nem ter).
+      if (trigger === "update" && session && "mfaVerified" in session && (session as { mfaVerified: boolean }).mfaVerified) {
+        token.mfaPending = false;
       }
 
       // Sempre que houver (userId, activeTenantId), resolve a Membership de novo —
@@ -133,6 +185,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.activeTenantId = token.activeTenantId ?? null;
       session.membershipId = token.membershipId ?? null;
       session.role = token.role ?? null;
+      session.mfaPending = token.mfaPending ?? false;
       return session;
     },
   },

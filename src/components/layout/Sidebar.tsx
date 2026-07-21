@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LayoutDashboard, Users, ClipboardCheck, PenLine, Upload, CreditCard, MessageSquare, LogOut, Plus, Sparkles, Building2, Tags, UserPlus, NotebookPen } from "lucide-react";
+import { LayoutDashboard, Users, ClipboardCheck, PenLine, Upload, CreditCard, MessageSquare, LogOut, Plus, Sparkles, Building2, Tags, UserPlus, NotebookPen, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OneAvatar } from "@/components/one/OneAvatar";
 
@@ -33,6 +33,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/convites", label: "Convites", icon: UserPlus },
   { href: "/planos", label: "Planos", icon: CreditCard },
   { href: "/organizacoes", label: "Redes de escolas", icon: Building2 },
+  { href: "/seguranca", label: "Segurança", icon: ShieldCheck },
 ];
 
 function isItemActive(pathname: string, href: string): boolean {

@@ -28,6 +28,11 @@ const WORKSPACE_SETUP_PATHS = new Set([
   "/api/workspaces",
   "/api/workspaces/invites/accept",
   "/convite/aceitar",
+  // Confirmar o 2FA pendente (ver MFA_VERIFY_EXEMPT_PATHS abaixo) precisa
+  // acontecer ANTES da seleção de workspace — sem isto aqui também, o
+  // usuário seria arrastado pra /workspaces no meio da verificação.
+  "/mfa-verificar",
+  "/api/account/mfa/verify-pending",
 ]);
 
 // Prefixo (não exato): Organization é global ao User, não a um Tenant ativo
@@ -36,7 +41,18 @@ const WORKSPACE_SETUP_PATHS = new Set([
 // /api/platform (Etapa 7) são cross-tenant pelo mesmo motivo — a checagem
 // de acesso de verdade é o gate de PLATFORM_ADMIN_EMAILS dentro da rota,
 // não a sessão de workspace.
-const WORKSPACE_SETUP_PREFIXES = ["/organizacoes", "/api/organizations", "/financeiro", "/api/platform"];
+// /seguranca e /api/account são da CONTA (User global), não de um Tenant —
+// mesmo racional de /organizacoes: sessão exige-se, mas nenhum workspace
+// ativo é necessário pra ativar/desativar MFA.
+const WORKSPACE_SETUP_PREFIXES = ["/organizacoes", "/api/organizations", "/financeiro", "/api/platform", "/seguranca", "/api/account"];
+
+// Login OAuth (Google) numa conta com MFA ativado chega aqui com
+// `session.mfaPending = true` (ver callback jwt em lib/auth.ts — o
+// Credentials já valida o segundo fator DENTRO de authorize(), mas o fluxo
+// OAuth nunca passa por ali). Enquanto pendente, TUDO redireciona pra
+// /mfa-verificar, antes até da checagem de workspace ativo.
+const MFA_VERIFY_PATH = "/mfa-verificar";
+const MFA_VERIFY_EXEMPT_PATHS = new Set([MFA_VERIFY_PATH, "/api/account/mfa/verify-pending"]);
 
 export default auth((request) => {
   const { pathname } = request.nextUrl;
@@ -52,6 +68,10 @@ export default auth((request) => {
     // `?token=...` — perder isso no round-trip do login quebraria o aceite.
     loginUrl.searchParams.set("callbackUrl", pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
+  }
+
+  if (session.mfaPending && !MFA_VERIFY_EXEMPT_PATHS.has(pathname)) {
+    return NextResponse.redirect(new URL(MFA_VERIFY_PATH, request.nextUrl.origin));
   }
 
   const hasActiveWorkspace = Boolean(session.membershipId && session.activeTenantId);

@@ -16,6 +16,11 @@ declare module "@auth/core/types" {
     activeTenantId: string | null;
     membershipId: string | null; // Membership.id do workspace ativo — vira SessionUser.id
     role: MembershipRole | null;
+    // true logo após um login OAuth (Google) numa conta com MFA ativado — o
+    // `authorize()` do Credentials já valida o segundo fator inline, mas o
+    // fluxo OAuth não passa por ali, então precisa desse claim + gate
+    // separado em proxy.ts (ver comentário em lib/auth.ts).
+    mfaPending: boolean;
   }
 }
 
@@ -25,5 +30,6 @@ declare module "@auth/core/jwt" {
     activeTenantId?: string | null;
     membershipId?: string | null;
     role?: MembershipRole | null;
+    mfaPending?: boolean;
   }
 }
