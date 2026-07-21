@@ -36,7 +36,10 @@ const WORKSPACE_SETUP_PATHS = new Set([
 // /api/platform (Etapa 7) são cross-tenant pelo mesmo motivo — a checagem
 // de acesso de verdade é o gate de PLATFORM_ADMIN_EMAILS dentro da rota,
 // não a sessão de workspace.
-const WORKSPACE_SETUP_PREFIXES = ["/organizacoes", "/api/organizations", "/financeiro", "/api/platform"];
+// /seguranca e /api/account são da CONTA (User global), não de um Tenant —
+// mesmo racional de /organizacoes: sessão exige-se, mas nenhum workspace
+// ativo é necessário pra ativar/desativar MFA.
+const WORKSPACE_SETUP_PREFIXES = ["/organizacoes", "/api/organizations", "/financeiro", "/api/platform", "/seguranca", "/api/account"];
 
 export default auth((request) => {
   const { pathname } = request.nextUrl;

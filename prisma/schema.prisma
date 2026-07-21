@@ -148,6 +148,14 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // MFA (TOTP) — ver src/lib/mfa/*. `mfaSecretEncrypted` guarda o segredo
+  // base32 cifrado (AES-256-GCM, MFA_ENCRYPTION_KEY), nunca em texto puro no
+  // banco. Presente mesmo com `mfaEnabled=false` durante o setup pendente
+  // (QR gerado mas ainda não confirmado com o primeiro código).
+  mfaEnabled         Boolean  @default(false)
+  mfaSecretEncrypted String?
+  mfaRecoveryCodes   String[] @default([]) // hashes bcrypt de códigos de uso único, consumidos ao usar
+
   accounts    Account[] // vínculos OAuth (Google, Facebook etc.)
   sessions    Session[] // só é populada se a estratégia for "database"; com JWT fica vazia
   memberships Membership[] // um workspace (Tenant) por linha
